@@ -275,7 +275,12 @@
   }
 
   // 오르골: "꼭꼭 숨어라" 느낌의 단조 선율 (그것이 가까울수록 커진다)
-  const MELODY = [659, 659, 523, 659, 0, 659, 523, 0, 587, 587, 494, 587, 523, 0, 0, 0];
+  // 테마별 선율. school: 동요풍 단조, hotel: 로비 라운지의 낡은 왈츠
+  const MELODIES = {
+    school: [659, 659, 523, 659, 0, 659, 523, 0, 587, 587, 494, 587, 523, 0, 0, 0],
+    hotel: [440, 0, 523, 659, 0, 523, 494, 0, 587, 698, 0, 587, 440, 0, 523, 622, 0, 0],
+  };
+  let MELODY = MELODIES.school;
   let mbGain = null, mbTimer = null, mbNext = 0, mbIdx = 0;
   function musicBoxLoop() {
     while (mbNext < ac.currentTime + 0.4) {
@@ -445,6 +450,102 @@
       const was = hbRate;
       hbRate = rate;
       if (rate && !was && !hbTimer) heartbeatLoop();
+    },
+    setTheme(name) { MELODY = MELODIES[name] || MELODIES.school; mbIdx = 0; },
+    keys() { // 지배인의 열쇠 꾸러미
+      if (!ac) return;
+      const t = ac.currentTime;
+      for (let i = 0; i < 5; i++) {
+        const o = ac.createOscillator();
+        o.type = 'triangle';
+        o.frequency.value = rand(2600, 4200);
+        const g = gain();
+        env(g, t + i * rand(0.05, 0.11), 0.002, 0.03, 0.18);
+        o.connect(g).connect(out(rand(-0.4, 0.4)));
+        o.start(t + i * 0.12);
+        o.stop(t + 0.9);
+      }
+    },
+    crank() { // 시동이 걸리지 않는 소리
+      if (!ac) return;
+      const t = ac.currentTime;
+      for (let i = 0; i < 3; i++) {
+        const o = ac.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(38, t + i * 0.7);
+        o.frequency.linearRampToValueAtTime(28, t + i * 0.7 + 0.5);
+        const g = gain();
+        env(g, t + i * 0.7, 0.02, 0.12 - i * 0.03, 0.5);
+        o.connect(filter('lowpass', 300)).connect(g).connect(master);
+        o.start(t + i * 0.7);
+        o.stop(t + i * 0.7 + 0.6);
+      }
+      noiseHit(t + 2.1, 'bandpass', 1500, 0.05, 0.08);
+    },
+    radio() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      noiseHit(t, 'bandpass', 2200, 0.12, 1.4);
+      noiseHit(t + 0.4, 'bandpass', 900, 0.08, 1.2);
+    },
+    pa() { // 낡은 스피커 안내 방송 차임
+      if (!ac) return;
+      const t = ac.currentTime;
+      [784, 659, 523].forEach((f, i) => {
+        const o = ac.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = f * (1 - i * 0.004);
+        const g = gain();
+        env(g, t + i * 0.45, 0.01, 0.09, 1.1);
+        o.connect(filter('bandpass', 1200, 0.8)).connect(g).connect(master);
+        o.start(t + i * 0.45);
+        o.stop(t + i * 0.45 + 1.3);
+      });
+      noiseHit(t, 'bandpass', 3000, 0.03, 2.5);
+    },
+    slam() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      thump(t, 70, 0.6, 0.6);
+      noiseHit(t, 'lowpass', 500, 0.35, 0.4);
+    },
+    powerOn() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(30, t);
+      o.frequency.exponentialRampToValueAtTime(60, t + 1.5);
+      const g = gain();
+      env(g, t, 0.3, 0.08, 2.2);
+      o.connect(filter('lowpass', 400)).connect(g).connect(master);
+      o.start(t);
+      o.stop(t + 2.6);
+      noiseHit(t, 'highpass', 3000, 0.08, 0.05);
+    },
+    unlock() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      noiseHit(t, 'bandpass', 1800, 0.12, 0.05);
+      thump(t + 0.12, 220, 0.12, 0.08);
+    },
+    beep() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      const o = ac.createOscillator();
+      o.type = 'square';
+      o.frequency.value = 1320;
+      const g = gain();
+      env(g, t, 0.002, 0.03, 0.06);
+      o.connect(g).connect(master);
+      o.start(t);
+      o.stop(t + 0.1);
+    },
+    breaker() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      thump(t, 160, 0.2, 0.06);
+      noiseHit(t, 'highpass', 2500, 0.06, 0.03);
     },
     stopLoops() {
       SFX.musicBox(0);

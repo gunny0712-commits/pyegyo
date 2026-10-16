@@ -1,8 +1,9 @@
-// 본편: 이동·조사·숨기, 손전등, 그것(추적자) AI, 스토리 이벤트, 체크포인트, 엔딩.
+// 본편 엔진: 이동·조사·숨기, 손전등, 그것(추적자) AI, 퍼즐 오버레이, 체크포인트, 엔딩.
+// 스토리별 맵·대사·이벤트는 js/game/stories/*.js 에서 hooks로 넘겨받는다.
 (() => {
   'use strict';
   const GAME = window.GAME;
-  const { SCENES, NOTES, ITEMS, OBJECTIVES, CHAPTER, DIFF, GHOST_FORBIDDEN, R } = GAME;
+  const { DIFF, R } = GAME;
   const $ = s => document.querySelector(s);
 
   const cvs = $('#game');
@@ -20,16 +21,14 @@
     book: $('#ov-book'), bookList: $('#book-list'),
     pause: $('#ov-pause'), dead: $('#ov-dead'), deadText: $('#dead-text'), deadRetry: $('#btn-retry'),
     ending: $('#ov-ending'), endingLines: $('#ending-lines'), endingFoot: $('#ending-foot'),
+    keypad: $('#ov-keypad'), kpTitle: $('#keypad-title'), kpDisplay: $('#keypad-display'), kpKeys: $('#keypad-keys'),
+    breaker: $('#ov-breaker'), brRow: $('#breaker-row'),
   };
 
-  const OBJ_ORDER = ['o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'o7'];
-  const ARRIVE_LINES = ['꼭꼭 숨어라…', '머리카락 보일라…', '어디 있니…', '다 숨었니…?'];
-  const SPOT_LINES = ['찾았다…?', '거기 있구나.', '보인다.'];
-  const LINGER_LINES = ['여기…?', '숨소리가 들려…', '…아닌가.'];
-  const DEAD_LINES = ['찾았다.', '머리카락 보였어.', '이번엔 네가 술래야.'];
-
   let W = 0, H = 0, DPR = 1, S = 1, offY = 0, viewW = 960;
-  let G = null;
+  let ST = null;       // 현재 스토리
+  let SCENES = {};
+  let G = null;        // 현재 게임 상태
   let opts = {};
   let settings = { brightness: 0.5, reduceFlicker: false };
   let raf = 0, last = 0;
@@ -43,18 +42,20 @@
   const diff = () => DIFF[G.meta.difficulty] || DIFF.explore;
   const fill = s => s.replace(/\{name\}/g, G.meta.name);
   const realWait = ms => new Promise(r => setTimeout(r, ms));
+  const forbidden = id => ST.forbidden.includes(id);
+  const visible = o => (!o.showIf || G.flags.has(o.showIf)) && (!o.hideIf || !G.flags.has(o.hideIf));
 
   // ───────── 상태 ─────────
 
   function freshState(meta) {
     return {
       meta,
-      scene: 'hall1', time: 0, playTime: 0,
-      player: { x: 240, dir: 1, moving: false, running: false, stamina: 100, exhausted: false, step: 0, hidden: null, aim: 0.12 },
+      scene: ST.start.scene, time: 0, playTime: 0,
+      player: { x: ST.start.x, dir: 1, moving: false, running: false, stamina: 100, exhausted: false, step: 0, hidden: null, aim: 0.12 },
       flash: { on: true, battery: 100 }, flashWas: true,
-      items: new Set(), notes: new Set(), flags: new Set(),
-      objective: 'o1',
-      ghost: { active: false, scene: 'hall2', x: 0, dir: -1, state: 'offscreen', roamAt: 0, followAt: 0, followTo: null },
+      items: new Set(), notes: new Set(), flags: new Set(), vars: {},
+      objective: ST.order[0],
+      ghost: { active: false, scene: null, x: 0, dir: -1, state: 'offscreen', roamAt: 0, followAt: 0, followTo: null },
       final: null, phantom: null,
       cam: 0, lampOn: true, lampNext: 2, lampFlickerUntil: 0, lampTick: 0,
       phoneRinging: false, lock: 0, overlay: null, transitioning: false, dead: false,
@@ -94,10 +95,10 @@
   function checkpoint() {
     if (!G || G.dead) return;
     G.checkpoint = snapshot();
-    opts.onSave && opts.onSave(G.checkpoint, CHAPTER[G.objective]);
+    opts.onSave && opts.onSave(G.checkpoint, ST.chapters[G.objective]);
   }
 
-  // ───────── 시간·자막 ─────────
+  // ───────── 시간·자막·HUD ─────────
 
   function wait(sec) {
     const g = G;
@@ -131,21 +132,21 @@
   }
 
   function setObjective(id) {
-    if (OBJ_ORDER.indexOf(id) <= OBJ_ORDER.indexOf(G.objective)) return;
+    if (ST.order.indexOf(id) <= ST.order.indexOf(G.objective)) return;
     G.objective = id;
     renderObjective(true);
     checkpoint();
   }
 
   function renderObjective(flash) {
-    el.chapter.textContent = CHAPTER[G.objective];
-    el.objective.textContent = OBJECTIVES[G.objective];
+    el.chapter.textContent = ST.chapters[G.objective];
+    el.objective.textContent = ST.objectives[G.objective];
     if (flash) { el.obj.classList.remove('new'); void el.obj.offsetWidth; el.obj.classList.add('new'); }
   }
 
   function renderItems() {
-    const chips = Object.keys(ITEMS).filter(k => G.items.has(k)).map(k => `<span class="chip">${ITEMS[k].name}</span>`);
-    chips.push(`<span class="chip chip-note">쪽지 ${G.notes.size}/4</span>`);
+    const chips = Object.keys(ST.items).filter(k => G.items.has(k)).map(k => `<span class="chip">${ST.items[k].name}</span>`);
+    chips.push(`<span class="chip chip-note">쪽지 ${G.notes.size}/${Object.keys(ST.notes).length}</span>`);
     el.items.innerHTML = chips.join('');
   }
 
@@ -158,8 +159,8 @@
 
   // ───────── 맵 그래프 ─────────
 
-  const exits = id => SCENES[id].objects.filter(o => (o.type === 'door' || o.type === 'stairs') && o.to);
-  const neighbors = id => exits(id).map(o => o.to).filter(t => !GHOST_FORBIDDEN.includes(t));
+  const exits = id => SCENES[id].objects.filter(o => (o.type === 'door' || o.type === 'stairs') && o.to && o.to !== id);
+  const neighbors = id => exits(id).map(o => o.to).filter(t => !forbidden(t));
   const doorTo = (id, to) => exits(id).find(o => o.to === to);
 
   function bfs(from) {
@@ -172,18 +173,18 @@
   }
 
   function farScene(from) {
-    const { dist } = bfs(from);
-    return Object.keys(dist).sort((a, b) => dist[b] - dist[a])[0] || 'hall2';
+    const start = forbidden(from) ? neighbors(from)[0] || Object.keys(SCENES).find(k => !forbidden(k)) : from;
+    const { dist } = bfs(start);
+    return Object.keys(dist).filter(k => !forbidden(k)).sort((a, b) => dist[b] - dist[a])[0] || start;
   }
 
   function nextScene(from) {
     const ns = neighbors(from);
-    if (Math.random() < 0.55 && !GHOST_FORBIDDEN.includes(G.scene)) {
+    if (Math.random() < 0.55 && !forbidden(G.scene)) {
       const { prev } = bfs(G.scene);
-      // G.scene에서 from으로의 최단 경로를 거꾸로 따라가면 from의 다음 칸이 나온다
       if (prev[from]) return prev[from];
     }
-    return pick(ns);
+    return ns.length ? pick(ns) : from;
   }
 
   // ───────── 상호작용 ─────────
@@ -192,6 +193,7 @@
     const p = G.player;
     let best = null, bd = 1e9;
     for (const o of SCENES[G.scene].objects) {
+      if (!visible(o)) continue;
       if ((o.type === 'item' || o.type === 'note') && G.flags.has('took:' + o.id)) continue;
       const d = Math.abs(o.x - p.x);
       if (d < (o.w || 80) / 2 + 26 && d < bd) { best = o; bd = d; }
@@ -199,18 +201,20 @@
     return best;
   }
 
-  function isLocked(o) { return o.lock && !G.flags.has('unlocked:' + o.id); }
+  const needsItem = o => o.lock && !G.flags.has('unlocked:' + o.id);
+  const needsFlag = o => o.needFlag && !G.flags.has(o.needFlag);
 
   function promptLabel(o) {
     if (G.player.hidden) return '나오기';
+    if (o.type === 'door' && needsFlag(o)) return o.prompt ? `${o.prompt} · 작동 안 함` : '잠김';
+    if (o.type === 'door' && needsItem(o)) return G.items.has(o.lock) ? '열쇠로 열기' : '잠김';
+    if (o.prompt) return o.prompt;
     switch (o.type) {
-      case 'door': return isLocked(o) ? (G.items.has(o.lock) ? '열쇠로 열기' : '잠김') : o.art === 'roomdoor' ? '나가기' : '들어가기';
+      case 'door': return o.art === 'roomdoor' || o.label === '복도' ? '나가기' : '들어가기';
       case 'stairs': return o.dir === 'up' ? '올라가기' : '내려가기';
       case 'hide': return '숨기';
       case 'item': return '줍기';
       case 'note': return '읽기';
-      case 'stall': return '열어 보기';
-      case 'wardrobe': return '열기';
       default: return '살펴보기';
     }
   }
@@ -225,28 +229,27 @@
       case 'hide': hide(o); break;
       case 'item': takeItem(o); break;
       case 'note': readNote(o); break;
-      case 'stall': stallEvent(o); break;
-      case 'wardrobe': ending(); break;
+      case 'use': ST.hooks.use[o.use](api, o); break;
       default: inspect(o);
     }
   }
 
-  async function useDoor(o) {
-    if (isLocked(o)) {
+  function useDoor(o) {
+    const hooks = ST.hooks;
+    if (needsFlag(o)) {
+      SFX.locked();
+      if (!(hooks.locked && hooks.locked(api, o))) say('잠겨 있다.');
+      return;
+    }
+    if (needsItem(o)) {
       if (!G.items.has(o.lock)) {
         SFX.locked();
-        if (o.id === 'h2-c23') {
-          say('잠겨 있다.');
-          say('교무실에 열쇠가 있을지도 몰라.');
-          if (G.objective === 'o1') setObjective('o2');
-        } else if (o.id === 'h2-music') {
-          say('잠겨 있다. 음악실 열쇠가 필요해.');
-          if (G.objective === 'o4') setObjective('o5');
-        } else say('잠겨 있다.');
+        if (!(hooks.locked && hooks.locked(api, o))) say('잠겨 있다.');
         return;
       }
       G.flags.add('unlocked:' + o.id);
-      say(`${ITEMS[o.lock].name}로 문을 열었다.`);
+      SFX.unlock();
+      say(`${ST.items[o.lock].name}로 문을 열었다.`);
     }
     go(o.to, o.toX);
   }
@@ -263,12 +266,16 @@
 
     const from = G.scene;
     const gh = G.ghost;
-    if (gh.active && gh.scene === from && gh.state !== 'leave' && (gh.state === 'chase' || Math.abs(gh.x - G.player.x) < 380)) {
+    if (to !== from && gh.active && gh.scene === from && gh.state !== 'leave' && (gh.state === 'chase' || Math.abs(gh.x - G.player.x) < 380)) {
       gh.followAt = G.time + diff().follow * rand(0.85, 1.2);
       gh.followTo = to;
     }
     if (G.phoneRinging) { G.phoneRinging = false; SFX.phone(false); }
-    if (G.final) { G.final = null; if (gh.active) { gh.scene = 'music'; gh.state = 'offscreen'; gh.roamAt = G.time + 4; } }
+    if (G.final && to !== from) {
+      // 막판 추격자를 떼어 놓고 나가면, 진짜 그것이 그 문으로 따라 나온다
+      G.final = null;
+      if (gh.active) Object.assign(gh, { scene: from, state: 'offscreen', followAt: G.time + diff().follow, followTo: to });
+    }
     G.phantom = null;
 
     G.scene = to;
@@ -285,8 +292,7 @@
 
   function hide(o) {
     const p = G.player, g = G.ghost;
-    if (g.active && g.scene === G.scene && g.state === 'chase' && Math.abs(g.x - p.x) < 320) g.sawHide = o.id;
-    else g.sawHide = null;
+    g.sawHide = g.active && g.scene === G.scene && g.state === 'chase' && Math.abs(g.x - p.x) < 320 ? o.id : null;
     p.hidden = o.id;
     p.x = o.x;
     G.flashWas = G.flash.on;
@@ -313,13 +319,7 @@
     }
     G.items.add(o.item);
     renderItems();
-    if (o.item === 'key23') {
-      say('"2-3" 꼬리표가 달린 열쇠.');
-      if (!G.flags.has('roster')) setObjective('o3');
-      phoneEvent();
-    } else if (o.item === 'roster') {
-      rosterEvent();
-    }
+    ST.hooks.take && ST.hooks.take(api, o);
   }
 
   function readNote(o) {
@@ -327,187 +327,21 @@
     G.notes.add(o.note);
     SFX.paper();
     renderItems();
-    openNote(o.note, () => {
-      if (o.note === 'n4' && G.objective === 'o4') say('음악준비실… 그리고 화장실 맨 끝 칸.');
-      if (o.note === 'n3') say('…술래가, 나였어?');
-    });
+    openNote(o.note, () => ST.hooks.note && ST.hooks.note(api, o));
   }
 
   async function inspect(o) {
-    if (o.id === 'o-phone' && G.phoneRinging) return phoneCall();
-    if (o.id === 'm-piano') SFX.piano();
+    if (ST.hooks.inspect && await ST.hooks.inspect(api, o)) return;
+    if (!o.lines) return;
     lock();
     for (const l of o.lines) await say(l);
     unlock();
-    if (o.id === 'n-mirror' && G.ghost.active && !G.flags.has('mirrorScare')) {
-      G.flags.add('mirrorScare');
-      SFX.stinger();
-      G.shake = 0.6;
-      say('…거울 속 내 어깨 너머로, 젖은 머리카락이.');
-    }
   }
 
-  async function stallEvent(o) {
-    if (G.flags.has('took:' + o.id)) { say('비어 있다.'); return; }
-    if (!G.flags.has('roster')) { SFX.locked(); say('안에서 잠겨 있다.'); return; }
-    if (!G.flags.has('knocked')) {
-      G.flags.add('knocked');
-      lock();
-      SFX.knock(3);
-      await say('똑. 똑. 똑.', 'sys', 2);
-      await say('…들어 있어요.', 'her', 2.4);
-      await say('……다시 열어 볼까.');
-      unlock();
-      return;
-    }
-    G.flags.add('took:' + o.id);
-    G.items.add('keyMusic');
-    renderItems();
-    SFX.doorOpen();
-    SFX.pickup();
-    say('아무도 없다. 물탱크 위에 열쇠가 하나.');
-    say('꼬리표에는 "음악실".');
-    setObjective('o6');
-  }
-
-  // ───────── 스토리 이벤트 ─────────
-
-  async function introScript() {
-    G.flags.add('intro');
-    await wait(1);
-    say('…교문은 열려 있었다. 누군가 열어 둔 것처럼.');
-    say('2학년 3반. 거기부터 가 보자.');
-    hint('← → 이동 · Shift 달리기 · E 조사 · F 손전등 · Q 쪽지 · Esc 메뉴', 10);
-    checkpoint();
-  }
-
-  function onEnterScene(to) {
-    if (to === 'hall2' && !G.flags.has('seen2') && !G.ghost.active) phantomEvent();
-    if (to === 'music' && G.objective === 'o6') setObjective('o7');
-    if (to === 'storage') storageEvent();
+  function onEnterScene(to, from) {
+    ST.hooks.enter && ST.hooks.enter(api, to, from);
     const g = G.ghost;
     if (!(g.active && (g.scene === to || g.followAt))) checkpoint();
-  }
-
-  async function phantomEvent() {
-    G.flags.add('seen2');
-    await wait(0.8);
-    G.phantom = { x: 720, dir: 1, a: 0.9, state: 'wander', until: G.time + 2.6 };
-    SFX.stinger();
-    await wait(2.6);
-    G.phantom = null;
-    say('…방금, 누가 2-2반으로 들어갔어?');
-  }
-
-  async function phoneEvent() {
-    await wait(1.5);
-    if (G.scene !== 'office' || G.flags.has('phoneRing')) return;
-    G.flags.add('phoneRing');
-    G.phoneRinging = true;
-    SFX.phone(true);
-    await wait(10);
-    if (G.phoneRinging) { G.phoneRinging = false; SFX.phone(false); }
-  }
-
-  async function phoneCall() {
-    G.phoneRinging = false;
-    SFX.phone(false);
-    lock();
-    await say('…여보세요?');
-    SFX.whisper();
-    await say('……{name}?', 'her', 2.6);
-    await say('왜 안 찾으러 와?', 'her', 2.6);
-    await say('끊겼다. 전화선은 처음부터 끊겨 있었는데.');
-    unlock();
-  }
-
-  async function rosterEvent() {
-    lock();
-    G.flags.add('roster');
-    await say('2학년 3반 출석부.');
-    await say('내 번호 칸에… "한소연"이라는 이름이 적혀 있다.');
-    await say('그리고 소연이의 칸에는, 내 이름이.');
-    G.blackout = 1;
-    SFX.buzz();
-    SFX.stinger();
-    await wait(1.4);
-    await say('이번엔 네가 숨어.', 'her', 2.6);
-    await say('내가 찾을게.', 'her', 2.4);
-    SFX.musicBox(0.5);
-    for (const n of ['하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉']) await say(`${n}…`, 'her', 0.7);
-    await say('열.', 'her', 1.6);
-    SFX.musicBox(0);
-    G.blackout = 0;
-    Object.assign(G.ghost, { active: true, scene: 'hall2', state: 'offscreen', roamAt: G.time + 9, followAt: 0 });
-    unlock();
-    setObjective('o4');
-    await say('…숨어야 해. 그리고 그 애가 숨은 곳을 찾아야 해.');
-    hint('그것이 다가오면 사물함·청소함에 숨으세요(E). 손전등(F)을 끄면 덜 눈에 띕니다. 달리면 발소리가 들립니다.', 12);
-  }
-
-  async function storageEvent() {
-    if (!G.flags.has('storageIn')) {
-      G.flags.add('storageIn');
-      say('먼지 냄새. 안쪽에 낡은 장롱이 보인다.');
-    }
-    if (!G.ghost.active) return;
-    const g0 = G;
-    await wait(2.2);
-    if (G !== g0 || G.scene !== 'storage' || G.flags.has('wardrobe')) return;
-    G.final = { x: 100, dir: 1, state: 'chase' };
-    SFX.doorOpen();
-    say('거기야…?', 'her');
-  }
-
-  async function ending() {
-    lock();
-    G.flags.add('wardrobe');
-    if (G.final) G.final.state = 'idle';
-    SFX.doorOpen();
-    await say('…찾았다.', 'me', 2.2);
-    SFX.stopLoops();
-    const trueEnd = G.notes.size === 4;
-    G.overlay = 'ending';
-    el.ending.classList.add('on');
-    el.endingLines.innerHTML = '';
-    el.endingFoot.innerHTML = '';
-    const lines = [
-      ['장롱 문은 바깥에서만 열리는 낡은 것이었다.'],
-      ['안에는 작은 명찰 하나가 놓여 있었다.'],
-      ['한소연.', 'red'],
-      ['…찾았다.', 'her'],
-      ...(trueEnd ? [
-        ['1998년 3월 5일 밤. 술래였던 나는 열까지 세었다.'],
-        ['그리고 약속대로, 아무도 찾지 않고 집에 갔다.'],
-        ['미안해, 소연아. 이십 년이나 걸려서.'],
-        ['괜찮아. 결국 찾아 줬잖아.', 'her'],
-        ['창밖이 밝아 온다. 현관문은, 열려 있었다.'],
-      ] : [
-        ['이십 년 만에, 숨바꼭질이 끝났다.'],
-        ['그런데 왜일까. 그 애가 기다린 사람이 나였다는 걸, 나는 알고 있었다.'],
-        ['창밖이 밝아 온다.'],
-      ]),
-    ];
-    const g0 = G;
-    for (const [t, cls] of lines) {
-      await realWait(2300);
-      if (G !== g0) return;
-      const p = document.createElement('p');
-      if (cls) p.className = cls;
-      p.textContent = t;
-      el.endingLines.appendChild(p);
-      SFX.type();
-    }
-    await realWait(2400);
-    if (G !== g0) return;
-    const mins = Math.floor(G.playTime / 60), secs = Math.floor(G.playTime % 60);
-    el.endingFoot.innerHTML = `
-      <p class="ending-title">${trueEnd ? '진 엔딩 · 술래의 사과' : '엔딩 · 찾았다'}</p>
-      <p class="ending-meta">플레이 시간 ${mins}분 ${secs}초 · 쪽지 ${G.notes.size}/4</p>
-      ${trueEnd ? '' : '<p class="ending-meta">흩어진 쪽지를 모두 모으면, 다른 결말을 볼 수 있다.</p>'}
-      <button class="btn" id="btn-ending-exit">타이틀로</button>`;
-    $('#btn-ending-exit').addEventListener('click', () => { SFX.click(); opts.onClear && opts.onClear(trueEnd); });
-    $('#btn-ending-exit').focus();
   }
 
   async function caught(fromHide) {
@@ -522,7 +356,7 @@
     await realWait(fromHide ? 900 : 1100);
     if (G !== g0) return;
     G.overlay = 'dead';
-    el.deadText.textContent = pick(DEAD_LINES);
+    el.deadText.textContent = pick(ST.lines.dead);
     const perma = diff().permadeath;
     el.deadRetry.hidden = perma;
     $('#dead-perma').hidden = !perma;
@@ -540,6 +374,152 @@
     sayChain = Promise.resolve();
     afterLoad();
   }
+
+  async function ending({ lines, title, metas = [], trueEnd }) {
+    SFX.stopLoops();
+    G.overlay = 'ending';
+    el.ending.classList.add('on');
+    el.endingLines.innerHTML = '';
+    el.endingFoot.innerHTML = '';
+    const g0 = G;
+    for (const [t, cls] of lines) {
+      await realWait(2300);
+      if (G !== g0) return;
+      const p = document.createElement('p');
+      if (cls) p.className = cls;
+      p.textContent = fill(t);
+      el.endingLines.appendChild(p);
+      SFX.type();
+    }
+    await realWait(2400);
+    if (G !== g0) return;
+    const mins = Math.floor(G.playTime / 60), secs = Math.floor(G.playTime % 60);
+    el.endingFoot.innerHTML = `
+      <p class="ending-title">${title}</p>
+      <p class="ending-meta">플레이 시간 ${mins}분 ${secs}초 · 쪽지 ${G.notes.size}/${Object.keys(ST.notes).length}</p>
+      ${metas.map(m => `<p class="ending-meta">${m}</p>`).join('')}
+      <button class="btn" id="btn-ending-exit">타이틀로</button>`;
+    $('#btn-ending-exit').addEventListener('click', () => { SFX.click(); opts.onClear && opts.onClear(ST.id, trueEnd); });
+    $('#btn-ending-exit').focus();
+  }
+
+  // ───────── 퍼즐 오버레이 ─────────
+
+  let kp = null;
+  function keypad({ title, code, onWrong }) {
+    return new Promise(resolve => {
+      G.overlay = 'keypad';
+      kp = { val: '', code, onWrong, fails: 0, resolve };
+      el.kpTitle.textContent = title;
+      renderKeypad();
+      el.keypad.classList.add('on');
+      el.kpKeys.querySelector('button').focus();
+    });
+  }
+  function renderKeypad(state) {
+    const n = kp.code.length;
+    el.kpDisplay.textContent = (kp.val + '_'.repeat(n - kp.val.length)).split('').join(' ');
+    el.kpDisplay.className = `keypad-display${state ? ' ' + state : ''}`;
+  }
+  function keypadPress(k) {
+    if (!kp) return;
+    if (k === 'back') kp.val = kp.val.slice(0, -1);
+    else if (k === 'ok') return keypadSubmit();
+    else if (kp.val.length < kp.code.length) kp.val += k;
+    SFX.beep();
+    renderKeypad();
+    if (kp.val.length === kp.code.length) setTimeout(keypadSubmit, 250);
+  }
+  function keypadSubmit() {
+    if (!kp || kp.val.length < kp.code.length) return;
+    if (kp.val === kp.code) { renderKeypad('ok'); setTimeout(() => closeKeypad(true), 500); return; }
+    kp.fails++;
+    SFX.locked();
+    renderKeypad('err');
+    const n = kp.fails;
+    const cb = kp.onWrong;
+    setTimeout(() => { if (kp) { kp.val = ''; renderKeypad(); } }, 600);
+    cb && cb(n);
+  }
+  function closeKeypad(ok) {
+    if (!kp) return;
+    el.keypad.classList.remove('on');
+    G.overlay = null;
+    const r = kp.resolve;
+    kp = null;
+    r(ok);
+  }
+
+  let br = null;
+  function breakers({ answer, onWrong }) {
+    return new Promise(resolve => {
+      G.overlay = 'breaker';
+      br = { state: answer.map(() => 0), answer, onWrong, resolve };
+      el.brRow.innerHTML = answer.map((_, i) => `<button class="brk" data-i="${i}" aria-pressed="false"><i></i><span>${i + 1}</span></button>`).join('');
+      el.breaker.classList.add('on');
+      el.brRow.querySelector('button').focus();
+    });
+  }
+  function toggleBreaker(i) {
+    if (!br) return;
+    br.state[i] = br.state[i] ? 0 : 1;
+    SFX.breaker();
+    const b = el.brRow.children[i];
+    b.classList.toggle('up', !!br.state[i]);
+    b.setAttribute('aria-pressed', String(!!br.state[i]));
+  }
+  function breakerGo() {
+    if (!br) return;
+    if (br.state.every((v, i) => v === br.answer[i])) { closeBreakers(true); return; }
+    const cb = br.onWrong;
+    closeBreakers(false);
+    cb && cb();
+  }
+  function closeBreakers(ok) {
+    if (!br) return;
+    el.breaker.classList.remove('on');
+    G.overlay = null;
+    const r = br.resolve;
+    br = null;
+    r(ok);
+  }
+
+  el.kpKeys.addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (b) keypadPress(b.dataset.k); });
+  $('#btn-keypad-close').addEventListener('click', () => closeKeypad(false));
+  el.brRow.addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) toggleBreaker(+b.dataset.i); });
+  $('#btn-breaker-go').addEventListener('click', breakerGo);
+  $('#btn-breaker-close').addEventListener('click', () => closeBreakers(false));
+
+  // ───────── 스토리에 넘겨주는 API ─────────
+
+  const api = {
+    get G() { return G; },
+    say, wait, hint, lock, unlock, setObjective, checkpoint, go, ending, keypad, breakers,
+    objective: () => G.objective,
+    scene: () => G.scene,
+    diff: () => diff(),
+    flag: f => G.flags.has(f),
+    setFlag: f => G.flags.add(f),
+    unsetFlag: f => G.flags.delete(f),
+    has: item => G.items.has(item),
+    give(item) { G.items.add(item); renderItems(); },
+    shake(v) { G.shake = v; },
+    blackout(v) { G.blackout = v; },
+    ring(on) { G.phoneRinging = on; SFX.phone(on); },
+    activateGhost(scene, delay = 9) {
+      Object.assign(G.ghost, { active: true, scene, state: 'offscreen', roamAt: G.time + delay, followAt: 0 });
+    },
+    // 큰 소리를 냈다: 그것이 이 방으로 온다
+    alertGhost() {
+      const g = G.ghost;
+      if (!g.active || g.scene === G.scene) return;
+      const nb = neighbors(G.scene);
+      if (!nb.length) return;
+      Object.assign(g, { scene: nb.includes(g.scene) ? g.scene : nb[0], state: 'offscreen', followAt: G.time + 3, followTo: G.scene });
+    },
+    chaser({ x, speed, keys: jingle }) { G.final = { x, dir: 1, state: 'chase', speed, jingle }; },
+    stopChaser() { if (G.final) G.final.state = 'idle'; },
+  };
 
   // ───────── 그것 ─────────
 
@@ -576,7 +556,8 @@
     });
     if (state === 'chase' && p.hidden) { g.state = 'search'; g.lastSeen = x + g.dir * 220; }
     SFX.doorOpen();
-    if (state === 'wander' && Math.random() < 0.7) { SFX.whisper(); say(pick(ARRIVE_LINES), 'her'); }
+    if (ST.sound === 'hotel') SFX.keys();
+    if (state === 'wander' && Math.random() < 0.7) { SFX.whisper(); say(pick(ST.lines.arrive), 'her'); }
   }
 
   function startChase() {
@@ -585,7 +566,7 @@
     g.lost = 0;
     SFX.stinger();
     G.shake = 0.4;
-    say(pick(SPOT_LINES), 'her', 1.8);
+    say(pick(ST.lines.spot), 'her', 1.8);
   }
 
   function ghostUpdate(dt) {
@@ -596,8 +577,8 @@
       if (g.followAt) {
         if (G.time < g.followAt) return;
         g.followAt = 0;
-        if (g.followTo === G.scene && !GHOST_FORBIDDEN.includes(G.scene)) { arrive(g.scene, 'chase'); return; }
-        if (!GHOST_FORBIDDEN.includes(g.followTo)) g.scene = g.followTo;
+        if (g.followTo === G.scene && !forbidden(G.scene)) { arrive(g.scene, 'chase'); return; }
+        if (!forbidden(g.followTo)) g.scene = g.followTo;
         g.roamAt = G.time + D.roam * 0.5;
         return;
       }
@@ -630,9 +611,12 @@
         if (p.hidden && adx < 40 && !g.lingered) {
           g.lingered = true;
           g.pauseUntil = G.time + 3;
-          say(pick(LINGER_LINES), 'her');
+          say(pick(ST.lines.linger), 'her');
         }
-        if (G.time > g.leaveAt) { g.state = 'leave'; g.exit = pick(exits(G.scene).filter(o => !GHOST_FORBIDDEN.includes(o.to))); }
+        if (G.time > g.leaveAt) {
+          const ex = exits(G.scene).filter(o => !forbidden(o.to));
+          if (ex.length) { g.state = 'leave'; g.exit = pick(ex); } else g.leaveAt = G.time + 20;
+        }
         break;
 
       case 'chase':
@@ -679,6 +663,8 @@
     G.cam = sc.width <= viewW ? (sc.width - viewW) / 2 : clamp(G.player.x - viewW / 2, 0, sc.width - viewW);
   }
 
+  const lampActive = sc => sc.lamp && (!sc.lampFlag || G.flags.has(sc.lampFlag));
+
   function update(dt) {
     G.time += dt;
     G.playTime += dt;
@@ -721,8 +707,8 @@
       if (G.flash.battery <= 0) { G.flash.battery = 0; G.flash.on = false; say('손전등이 꺼졌다. 건전지가…'); }
     }
 
-    // 깜빡이는 형광등
-    if (sc.lamp) {
+    // 깜빡이는 천장 조명
+    if (lampActive(sc)) {
       if (settings.reduceFlicker) G.lampOn = true;
       else if (G.time < G.lampFlickerUntil) {
         if (G.time > G.lampTick) { G.lampOn = Math.random() > 0.5; G.lampTick = G.time + rand(0.04, 0.12); }
@@ -735,12 +721,13 @@
 
     ghostUpdate(dt);
 
-    if (G.final && G.final.state === 'chase' && !G.dead) {
-      const f = G.final;
-      moveGhost(f, p.x, 48, dt);
+    const f = G.final;
+    if (f && f.state === 'chase' && !G.dead) {
+      moveGhost(f, p.x, f.speed, dt);
+      if (f.jingle && Math.random() < dt * 1.2) SFX.keys();
       if (Math.abs(p.x - f.x) < 36) caught(false);
     }
-    if (G.phantom) G.phantom.x += 70 * dt, G.phantom.a = Math.max(0, G.phantom.a - dt * 0.3);
+    if (G.phantom) { G.phantom.x += 70 * dt; G.phantom.a = Math.max(0, G.phantom.a - dt * 0.3); }
 
     const target = sc.width <= viewW ? (sc.width - viewW) / 2 : clamp(p.x - viewW / 2 + p.dir * 80, 0, sc.width - viewW);
     G.cam += (target - G.cam) * (1 - Math.pow(0.02, dt));
@@ -761,7 +748,7 @@
     if (G.dead) return;
     let near = Infinity, chasing = false;
     if (g.active && g.scene === G.scene) { near = Math.abs(g.x - p.x); chasing = g.state === 'chase'; }
-    if (f) { near = Math.abs(f.x - p.x); chasing = true; }
+    if (f && f.state === 'chase') { near = Math.abs(f.x - p.x); chasing = true; }
     const present = near < Infinity;
     SFX.musicBox(present && !chasing ? clamp(1 - near / 900, 0.05, 1) * 0.6 : 0);
     const rate = chasing ? 150 : present && (near < 450 || p.hidden) ? 110 : 0;
@@ -796,6 +783,7 @@
   function render() {
     const sc = SCENES[G.scene];
     const p = G.player;
+    const look = ST.look;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
@@ -817,14 +805,14 @@
     world();
     ctx.beginPath(); ctx.rect(0, 0, sc.width, 540); ctx.clip();
     R.scene(ctx, sc, x0, x1, G);
-    if (!p.hidden) R.player(ctx, p);
-    if (ghostHere) R.ghost(ctx, g, G.time, 1);
-    if (G.final) R.ghost(ctx, G.final, G.time, 1);
+    if (!p.hidden) R.player(ctx, p, look.player);
+    if (ghostHere) R.ghost(ctx, g, G.time, 1, look.ghost);
+    if (G.final) R.ghost(ctx, G.final, G.time, 1, look.ghost);
     R.foreground(ctx, sc, G.cam, x0, x1);
     ctx.restore();
 
     // 어둠
-    const amb = G.blackout ? 0.995 : 0.965 - settings.brightness * 0.14;
+    const amb = G.blackout ? 0.995 : 0.965 - settings.brightness * 0.14 - (G.flags.has('power') && sc.powered !== false && ST.id === 'hotel' && sc.kind !== 'burned' && sc.kind !== 'stairwell' ? 0.06 : 0);
     mctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     mctx.globalCompositeOperation = 'source-over';
     mctx.clearRect(0, 0, W, H);
@@ -837,12 +825,14 @@
         hole(tx(wx), ty(sc.kind === 'corridor' ? 130 : 170), 150 * S, 0.32);
         hole(tx(wx + 50), ty(500), 110 * S, 0.16);
       });
-      if (sc.lamp && G.lampOn) hole(tx(sc.lamp), ty(220), 330 * S, 0.75);
+      (sc.lights || []).forEach(l => hole(tx(l.x), ty(l.y), l.r * S, l.a));
+      if (G.flags.has('power')) (sc.sconces || []).forEach(x => hole(tx(x), ty(200), 140 * S, 0.45));
+      if (lampActive(sc) && G.lampOn) hole(tx(sc.lamp), ty(220), 330 * S, 0.75);
       if (!p.hidden) hole(tx(p.x), ty(430), 120 * S, G.flash.on ? 0.45 : 0.3);
       if (G.flash.on && !p.hidden) {
         const b = G.flash.battery;
         let pw = (0.7 + 0.3 * Math.min(1, b / 30)) * (b < 15 && Math.random() < 0.12 ? 0.25 : 1);
-        if (G.ghost.state === 'chase' && ghostHere && Math.random() < 0.05 && !settings.reduceFlicker) pw *= 0.3;
+        if (((g.state === 'chase' && ghostHere) || G.final) && Math.random() < 0.05 && !settings.reduceFlicker) pw *= 0.3;
         const hx = tx(p.x + p.dir * 30), hy = ty(R.FEET - 72);
         const ang = p.dir > 0 ? p.aim : Math.PI - p.aim;
         cone(hx, hy, 580 * S * pw, ang, 0.34, pw);
@@ -853,15 +843,15 @@
 
     // 어둠 속에서도 희미하게 보이는 것들
     world();
-    if (ghostHere) R.ghost(ctx, g, G.time, 0.13);
-    if (G.final) R.ghost(ctx, G.final, G.time, 0.13);
-    if (G.phantom) R.ghost(ctx, G.phantom, G.time, G.phantom.a * 0.6);
+    if (ghostHere) R.ghost(ctx, g, G.time, 0.13, look.ghost);
+    if (G.final) R.ghost(ctx, G.final, G.time, 0.13, look.ghost);
+    if (G.phantom) R.ghost(ctx, G.phantom, G.time, G.phantom.a * 0.6, look.ghost);
     ctx.restore();
 
     // 아이템 반짝임
     const pulse = 0.25 + 0.2 * Math.sin(G.time * 3);
     for (const o of sc.objects) {
-      if ((o.type !== 'item' && o.type !== 'note') || G.flags.has('took:' + o.id)) continue;
+      if ((o.type !== 'item' && o.type !== 'note') || G.flags.has('took:' + o.id) || !visible(o)) continue;
       if (o.x < x0 - 50 || o.x > x1 + 50) continue;
       ctx.fillStyle = `rgba(255,240,200,${pulse})`;
       ctx.beginPath();
@@ -873,14 +863,15 @@
     if (G.prompt && !G.overlay) {
       const o = G.prompt;
       const label = promptLabel(o);
+      const bad = label === '잠김' || label.endsWith('작동 안 함');
       const px = tx(o.x), py = ty(R.promptY(o));
       ctx.font = `${Math.round(12 * Math.max(1, S * 0.8))}px ${R.MONO}`;
       const w = ctx.measureText(`E  ${label}`).width + 18;
       ctx.fillStyle = 'rgba(0,0,0,.65)';
       ctx.fillRect(px - w / 2, py - 13, w, 26);
-      ctx.strokeStyle = label === '잠김' ? 'rgba(179,38,30,.7)' : 'rgba(214,207,191,.35)';
+      ctx.strokeStyle = bad ? 'rgba(179,38,30,.7)' : 'rgba(214,207,191,.35)';
       ctx.strokeRect(px - w / 2, py - 13, w, 26);
-      ctx.fillStyle = label === '잠김' ? '#d98b84' : '#d6cfbf';
+      ctx.fillStyle = bad ? '#d98b84' : '#d6cfbf';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(`E  ${label}`, px, py + 1);
@@ -912,7 +903,7 @@
 
   let noteDone = null;
   function openNote(id, done) {
-    const n = NOTES[id];
+    const n = ST.notes[id];
     G.overlay = 'note';
     noteDone = done || null;
     el.noteTitle.textContent = n.title;
@@ -930,8 +921,8 @@
 
   function openBook() {
     G.overlay = 'book';
-    const list = Object.keys(NOTES).map(id => G.notes.has(id)
-      ? `<li><button data-note="${id}">${NOTES[id].title}</button></li>`
+    const list = Object.keys(ST.notes).map(id => G.notes.has(id)
+      ? `<li><button data-note="${id}">${ST.notes[id].title}</button></li>`
       : '<li class="missing">— 찾지 못한 쪽지 —</li>');
     el.bookList.innerHTML = list.join('');
     el.book.classList.add('on');
@@ -948,7 +939,9 @@
   function closePause() { el.pause.classList.remove('on'); G.overlay = null; }
 
   function resetUI() {
-    [el.note, el.book, el.pause, el.dead, el.ending].forEach(o => o.classList.remove('on'));
+    [el.note, el.book, el.pause, el.dead, el.ending, el.keypad, el.breaker].forEach(o => o.classList.remove('on'));
+    kp = null;
+    br = null;
     el.veil.classList.remove('on');
     el.sub.className = 'subtitle';
     el.fade.classList.remove('on');
@@ -985,6 +978,20 @@
   document.addEventListener('keydown', e => {
     if (!G || !el.root.classList.contains('active') || document.querySelector('dialog[open]')) return;
     const c = e.code;
+
+    if (G.overlay === 'keypad') {
+      if (/^\d$/.test(e.key)) keypadPress(e.key);
+      else if (e.key === 'Backspace') keypadPress('back');
+      else if (e.key === 'Escape') closeKeypad(false);
+      else if (e.key === 'Enter') { e.preventDefault(); keypadSubmit(); }
+      return;
+    }
+    if (G.overlay === 'breaker') {
+      if (/^[1-9]$/.test(e.key) && +e.key <= br.answer.length) toggleBreaker(+e.key - 1);
+      else if (e.key === 'Escape') closeBreakers(false);
+      return;
+    }
+
     if (MOVE_KEYS.includes(c) || ACT_KEYS.includes(c) || c === 'Tab') e.preventDefault();
 
     if (G.overlay === 'note') { if (c === 'Escape' || ACT_KEYS.includes(c)) closeNote(); return; }
@@ -1030,17 +1037,20 @@
     renderObjective(false);
     renderItems();
     showPlace();
-    if (!G.flags.has('intro')) introScript();
-    else onEnterScene(G.scene);
+    if (!G.flags.has('intro')) { G.flags.add('intro'); ST.hooks.intro(api); }
+    else onEnterScene(G.scene, null);
   }
 
   window.Game = {
     start(save, options) {
       opts = options || {};
+      ST = GAME.STORIES[save.story || 'school'];
+      SCENES = ST.scenes;
+      SFX.setTheme(ST.sound);
       resize();
       resetUI();
       sayChain = Promise.resolve();
-      G = build({ name: save.name, studentNo: save.studentNo, difficulty: save.difficulty }, save.state || null);
+      G = build({ name: save.name, difficulty: save.difficulty }, save.state || null);
       if (save.state) G.checkpoint = save.state;
       afterLoad();
       if (!raf) { last = performance.now() / 1000; raf = requestAnimationFrame(frame); }

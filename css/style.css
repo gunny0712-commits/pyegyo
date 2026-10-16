@@ -533,3 +533,109 @@ body.reduce-flicker #screen-game.danger::after { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .fx-noise { animation: none; }
 }
+
+/* ───────── 에피소드 선택 ───────── */
+
+#screen-story { align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.story-wrap { width: min(860px, 100%); display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.story-head { font-family: var(--font-mono); font-size: 12px; letter-spacing: .5em; color: var(--ink-dim); }
+.story-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; width: 100%; }
+.story-card {
+  position: relative; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  padding: 26px 24px 28px;
+  background: linear-gradient(170deg, rgba(30, 28, 24, .92), rgba(10, 10, 9, .95));
+  border: 1px solid #2c2822;
+  transition: border-color .25s, transform .25s;
+}
+.story-card:hover, .story-card:focus-visible { border-color: var(--blood-hi); transform: translateY(-3px); outline: none; }
+.story-hotel { background: linear-gradient(170deg, rgba(22, 26, 34, .92), rgba(8, 9, 12, .95)); }
+.story-hotel:hover, .story-hotel:focus-visible { border-color: #b08a3a; }
+.story-ep { font-family: var(--font-mono); font-size: 11px; letter-spacing: .3em; color: var(--blood-hi); }
+.story-hotel .story-ep { color: #c09a4a; }
+.story-name { font-weight: 800; font-size: 40px; letter-spacing: .25em; color: var(--ink); }
+.story-sub { font-size: 15px; letter-spacing: .3em; color: var(--ink-dim); }
+.story-desc { margin-top: 10px; font-size: 14px; line-height: 1.7; color: var(--ink-dim); }
+.story-badge { position: absolute; top: 18px; right: 18px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); border: 1px solid var(--ink-faint); padding: 2px 8px; }
+.story-badge:empty { display: none; }
+
+/* ───────── 출동 지령서 ───────── */
+
+#screen-police { align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+.dispatch {
+  width: min(580px, 100%);
+  background: linear-gradient(175deg, #d9dbd6, #b6b9b2);
+  color: #1e2228;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .9);
+  transform: rotate(.9deg);
+  animation: cardIn .9s cubic-bezier(.2, .8, .2, 1);
+}
+.dispatch.shake { animation: shake .4s; }
+.dispatch-head { display: flex; align-items: center; gap: 14px; background: #1c2a44; color: #e3e6ea; padding: 12px 22px; }
+.dispatch-org { font-family: var(--font-mono); font-size: 12px; letter-spacing: .2em; opacity: .8; }
+.dispatch-kind { flex: 1; font-weight: 800; font-size: 18px; letter-spacing: .3em; }
+.dispatch-stamp { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: #e04a3a; border: 2px solid #e04a3a; padding: 1px 8px; transform: rotate(-8deg); }
+.dispatch-grid { display: grid; grid-template-columns: 5em 1fr; gap: 10px 14px; padding: 20px 22px 6px; font-size: 14px; }
+.dispatch-grid dt { font-family: var(--font-mono); font-size: 12px; color: #5a6068; padding-top: 2px; }
+.dispatch-grid dd { min-width: 0; border-bottom: 1px dashed rgba(30, 34, 40, .3); padding-bottom: 6px; font-family: var(--font-mono); }
+.dispatch-quote { font-family: var(--font-title) !important; line-height: 1.6; }
+.dispatch-quote em { font-style: normal; color: #8a2a20; font-family: var(--font-mono); font-size: 12px; }
+.dispatch-name { display: flex; align-items: baseline; gap: 8px; }
+.dispatch-name input {
+  flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+  font-family: var(--font-hand); font-size: 30px; line-height: 1; color: #1c2a5a;
+}
+.dispatch-name input::placeholder { font-family: var(--font-mono); font-size: 14px; color: rgba(30, 34, 40, .4); }
+.dispatch-name input.err::placeholder { color: #a8231b; }
+.dispatch .diff legend, .dispatch .diff-desc { color: #4a5058; }
+.dispatch .diff-opts span { border-color: rgba(30, 34, 40, .35); }
+.dispatch .diff-opts input:checked + span { background: #1c2a44; color: #e3e6ea; }
+.dispatch .diff-opts input[value="nightmare"]:checked + span { background: var(--blood); }
+.dispatch .btn { color: #1e2228; border-color: rgba(30, 34, 40, .45); }
+.dispatch .btn:hover, .dispatch .btn:focus-visible { background: rgba(30, 34, 40, .1); }
+.dispatch .btn-primary { color: #f0e6d2; background: #1c2a44; border-color: #1c2a44; }
+.dispatch .btn-primary:hover, .dispatch .btn-primary:focus-visible { background: #2a3d60; }
+
+/* ───────── 퍼즐: 키패드 · 배전반 ───────── */
+
+.keypad {
+  width: min(320px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px;
+  background: #121313; border: 1px solid #34342e; padding: 24px; box-shadow: 0 20px 70px #000;
+}
+.keypad-title { font-weight: 800; font-size: 16px; letter-spacing: .2em; }
+.keypad-help { font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim); text-align: center; line-height: 1.6; }
+.keypad-display {
+  width: 100%; text-align: center; padding: 12px 0;
+  font-family: var(--font-mono); font-size: 30px; letter-spacing: .2em;
+  background: #050605; color: #9ad08a; border: 1px solid #2a2e2a;
+  font-variant-numeric: tabular-nums;
+}
+.keypad-display.err { color: #e05a4a; animation: shake .4s; }
+.keypad-display.ok { color: #d8f0b0; }
+.keypad-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.keypad-keys button {
+  padding: 12px 0; font-family: var(--font-mono); font-size: 18px; cursor: pointer;
+  background: #2a2c2a; border: 1px solid #3e403c; color: var(--ink);
+}
+.keypad-keys button:hover, .keypad-keys button:focus-visible { background: #3a3d3a; outline: none; border-color: var(--ink-dim); }
+
+.breaker-box { width: min(420px, 100%); }
+.breaker-row { display: flex; gap: 12px; justify-content: center; padding: 10px 0; }
+.brk {
+  width: 52px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: 0; cursor: pointer; color: var(--ink-dim); font-family: var(--font-mono);
+}
+.brk i { position: relative; display: block; width: 34px; height: 76px; background: #0a0b0a; border: 2px solid #3a3d3a; }
+.brk i::after { content: ''; position: absolute; left: 4px; right: 4px; height: 30px; bottom: 4px; background: #6a6a66; transition: bottom .12s; }
+.brk.up i::after { bottom: 38px; background: #d8d2b0; }
+.brk:focus { outline: none; }
+.brk:focus-visible i { outline: 2px solid var(--ink-dim); outline-offset: 2px; }
+.breaker-box .panel-foot { width: 100%; margin-top: 4px; }
+
+.subtitle.girl { font-family: var(--font-hand); font-size: clamp(26px, 3.2vw, 36px); color: #a8c4d8; letter-spacing: .06em; }
+.ending-lines .girl { font-family: var(--font-hand); font-size: 1.5em; color: #a8c4d8; line-height: 1.6; }
+
+@media (max-width: 640px) {
+  .dispatch { transform: none; }
+  .story-name { font-size: 32px; }
+}

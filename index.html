@@ -50,7 +50,63 @@
     <p class="version">v0.1.0</p>
   </section>
 
-  <!-- 2. 새 게임: 학생증 작성 -->
+  <!-- 2. 새 게임: 에피소드 선택 -->
+  <section id="screen-story" class="screen">
+    <div class="story-wrap">
+      <p class="story-head">에피소드를 고르세요</p>
+      <div class="story-cards">
+        <button class="story-card" data-story="school">
+          <span class="story-ep">EPISODE 1 · 1998</span>
+          <span class="story-name">폐교</span>
+          <span class="story-sub">남겨진 교실</span>
+          <span class="story-desc">문을 닫은 월하고등학교. 이십 년 전에 끝나지 않은 숨바꼭질.</span>
+          <span class="story-badge" data-cleared="school"></span>
+        </button>
+        <button class="story-card story-hotel" data-story="hotel">
+          <span class="story-ep">EPISODE 2 · 2004</span>
+          <span class="story-name">체크아웃</span>
+          <span class="story-sub">숲속의 백운호텔</span>
+          <span class="story-desc">새벽 2시의 신고 전화. 출동한 곳은 스무 해 전에 불탄 채 버려진 호텔이었다.</span>
+          <span class="story-badge" data-cleared="hotel"></span>
+        </button>
+      </div>
+      <button class="btn" id="btn-story-back">돌아가기</button>
+    </div>
+  </section>
+
+  <!-- 2-2. 에피소드 2: 출동 지령서 -->
+  <section id="screen-police" class="screen">
+    <form class="dispatch" id="form-police" autocomplete="off" novalidate>
+      <div class="dispatch-head">
+        <span class="dispatch-org">백운파출소</span>
+        <span class="dispatch-kind">출 동 지 령 서</span>
+        <span class="dispatch-stamp">긴급</span>
+      </div>
+      <dl class="dispatch-grid">
+        <dt>사건번호</dt><dd id="case-no">-</dd>
+        <dt>접수</dt><dd>02 : 14</dd>
+        <dt>위치</dt><dd>백운산 임도 끝 · 백운호텔</dd>
+        <dt>내용</dt><dd class="dispatch-quote">"여기… 백운호텔인데요. 문이 안 열려요. 살려 주세요." <em>(통화 끊김)</em></dd>
+        <dt><label for="in-officer">출동</label></dt>
+        <dd class="dispatch-name"><input id="in-officer" name="name" maxlength="8" placeholder="경찰관 이름" spellcheck="false"><span>순경</span></dd>
+      </dl>
+      <fieldset class="diff">
+        <legend>근무 강도</legend>
+        <div class="diff-opts">
+          <label><input type="radio" name="difficulty" value="tour"><span>순찰</span></label>
+          <label><input type="radio" name="difficulty" value="explore" checked><span>출동</span></label>
+          <label><input type="radio" name="difficulty" value="nightmare"><span>고립</span></label>
+        </div>
+        <p class="diff-desc" id="diff-desc-police"></p>
+      </fieldset>
+      <div class="idcard-foot">
+        <button type="button" class="btn" id="btn-police-back">돌아가기</button>
+        <button type="submit" class="btn btn-primary">출동한다</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 2-1. 에피소드 1: 학생증 작성 -->
   <section id="screen-newgame" class="screen">
     <form class="idcard" id="form-new" autocomplete="off" novalidate>
       <div class="idcard-head">
@@ -162,6 +218,33 @@
       </div>
     </div>
 
+    <div class="overlay" id="ov-keypad">
+      <div class="keypad">
+        <p class="keypad-title" id="keypad-title"></p>
+        <div class="keypad-display" id="keypad-display"></div>
+        <div class="keypad-keys" id="keypad-keys">
+          <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+          <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+          <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+          <button data-k="back" aria-label="지우기">⌫</button><button data-k="0">0</button><button data-k="ok" aria-label="확인">↵</button>
+        </div>
+        <p class="keypad-help">숫자 키로도 입력할 수 있습니다.</p>
+        <button class="btn" id="btn-keypad-close">그만두기</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="ov-breaker">
+      <div class="keypad breaker-box">
+        <p class="keypad-title">배전반</p>
+        <p class="keypad-help">차단기를 올리고 메인 전원을 넣으세요. 숫자 키 1–5로도 바꿀 수 있습니다.</p>
+        <div class="breaker-row" id="breaker-row"></div>
+        <div class="panel-foot">
+          <button class="btn" id="btn-breaker-close">그만두기</button>
+          <button class="btn btn-primary" id="btn-breaker-go">메인 전원 투입</button>
+        </div>
+      </div>
+    </div>
+
     <div class="overlay ov-dead" id="ov-dead">
       <p class="dead-text" id="dead-text">찾았다.</p>
       <p class="dead-perma" id="dead-perma" hidden>악몽 난이도에서는 다시 시작할 수 없다.</p>
@@ -246,6 +329,8 @@
   <script src="js/background.js"></script>
   <script src="js/game/data.js"></script>
   <script src="js/game/render.js"></script>
+  <script src="js/game/stories/school.js"></script>
+  <script src="js/game/stories/hotel.js"></script>
   <script src="js/game/game.js"></script>
   <script src="js/main.js"></script>
 </body>

@@ -62,14 +62,31 @@
     }).then(() => { busy = false; });
   }
 
+  const STORY_TITLE = { school: '폐교', hotel: '체크아웃' };
+
+  // 예전 형식({ trueEnd })은 에피소드 1 기록으로 읽는다
+  function getCleared() {
+    const c = store.get(KEY_CLEARED, {}) || {};
+    return 'trueEnd' in c ? { school: { trueEnd: c.trueEnd } } : c;
+  }
+
   function onEnter(id) {
     if (id === 'title') {
-      const cleared = store.get(KEY_CLEARED, null);
+      const cleared = getCleared().school;
       $('.title-sub').textContent = cleared ? (cleared.trueEnd ? '술래의 사과' : '숨바꼭질은 끝났다') : '남겨진 교실';
       refreshContinue();
       selectBtn(menuBtns.find(b => !b.disabled));
     }
+    if (id === 'story') {
+      const cleared = getCleared();
+      $$('[data-cleared]').forEach(b => {
+        const c = cleared[b.dataset.cleared];
+        b.textContent = c ? (c.trueEnd ? '진 엔딩 클리어' : '클리어') : '';
+      });
+      $('.story-card').focus();
+    }
     if (id === 'newgame') openNewGame();
+    if (id === 'police') openPolice();
     if (id === 'intro') runIntro();
   }
 
@@ -131,17 +148,17 @@
     const btn = $('#btn-continue');
     btn.disabled = !save;
     $('#save-info').textContent = save
-      ? `${save.name} · ${save.chapter} · ${new Date(save.savedAt).toLocaleDateString('ko-KR')}`
+      ? `${STORY_TITLE[save.story || 'school']} · ${save.name} · ${save.chapter} · ${new Date(save.savedAt).toLocaleDateString('ko-KR')}`
       : '';
   }
 
   async function act(action) {
     if (action === 'new') {
       if (store.get(KEY_SAVE, null)) {
-        const ok = await confirmBox('새로 시작할까요?', '이전 기록은 사라집니다.<br>그 아이는 당신을 기억하겠지만.');
+        const ok = await confirmBox('새로 시작할까요?', '이전 기록은 사라집니다.<br>그곳은 당신을 기억하겠지만.');
         if (!ok) return;
       }
-      show('newgame');
+      show('story');
     } else if (action === 'continue') {
       const save = store.get(KEY_SAVE, null);
       if (save) startGame(save);
@@ -269,7 +286,7 @@
   $$('input[name=difficulty]').forEach(r => r.addEventListener('change', () => { SFX.hover(); updateDiff(); }));
   inName.addEventListener('input', () => { if (Math.random() < 0.6) SFX.type(); });
 
-  $('#btn-back').addEventListener('click', () => { SFX.click(); show('title'); });
+  $('#btn-back').addEventListener('click', () => { SFX.click(); show('story'); });
 
   form.addEventListener('submit', e => {
     e.preventDefault();
@@ -286,6 +303,7 @@
       return;
     }
     const save = {
+      story: 'school',
       name,
       studentNo: $('#student-no').textContent,
       difficulty: form.difficulty.value,
@@ -299,13 +317,71 @@
     show('intro');
   });
 
+  // ── 2-2. 에피소드 선택 · 출동 지령서 ──
+
+  $$('.story-card').forEach(c => {
+    c.addEventListener('mouseenter', () => SFX.hover());
+    c.addEventListener('click', () => { if (busy) return; SFX.click(); show(c.dataset.story === 'hotel' ? 'police' : 'newgame'); });
+  });
+  $('#btn-story-back').addEventListener('click', () => { SFX.click(); show('title'); });
+
+  const POLICE_DIFF = {
+    tour: '손전등 배터리가 넉넉하다. 지배인은 느리게 걷는다.',
+    explore: '권장. 배터리는 아껴 써야 하고, 지배인은 열쇠 소리를 따라온다.',
+    nightmare: '저장할 수 없다. 한 번 붙잡히면 끝이다.',
+  };
+  const policeForm = $('#form-police');
+  const inOfficer = $('#in-officer');
+
+  function openPolice() {
+    policeForm.reset();
+    inOfficer.classList.remove('err');
+    inOfficer.placeholder = '경찰관 이름';
+    $('#case-no').textContent = `2026-1102-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    updatePoliceDiff();
+    setTimeout(() => inOfficer.focus(), 50);
+  }
+  function updatePoliceDiff() { $('#diff-desc-police').textContent = POLICE_DIFF[policeForm.difficulty.value]; }
+  $$('#form-police input[name=difficulty]').forEach(r => r.addEventListener('change', () => { SFX.hover(); updatePoliceDiff(); }));
+  inOfficer.addEventListener('input', () => { if (Math.random() < 0.6) SFX.type(); });
+  $('#btn-police-back').addEventListener('click', () => { SFX.click(); show('story'); });
+
+  policeForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if (busy) return;
+    const name = inOfficer.value.trim();
+    if (!name) {
+      inOfficer.classList.add('err');
+      inOfficer.placeholder = '이름을 적어야 출동할 수 있다.';
+      policeForm.classList.remove('shake');
+      void policeForm.offsetWidth;
+      policeForm.classList.add('shake');
+      SFX.buzz();
+      inOfficer.focus();
+      return;
+    }
+    const save = { story: 'hotel', name, difficulty: policeForm.difficulty.value, chapter: '프롤로그 · 신고', savedAt: Date.now() };
+    if (save.difficulty !== 'nightmare') store.set(KEY_SAVE, save);
+    else store.del(KEY_SAVE);
+    pending = save;
+    SFX.door();
+    show('intro');
+  });
+
   // ── 3. 인트로 ──
 
   let pending = null;
   let introToken = 0;
   let introDone = false;
 
-  function introLines(name) {
+  function introLines(name, story) {
+    if (story === 'hotel') return [
+      { text: '새벽 2시 14분. 백운파출소에 전화가 걸려 왔다.' },
+      { text: '"여기… 백운호텔인데요. 문이 안 열려요. 살려 주세요."' },
+      { text: '통화는 거기서 끊겼다.' },
+      { text: '백운호텔은 2004년 겨울, 불이 난 뒤로 문을 닫은 곳이다.', red: true },
+      { text: `${name} 순경은 순찰차를 몰고 숲길로 들어섰다.` },
+    ];
     return [
       { text: '1998년 3월, 월하고등학교는 문을 닫았다.' },
       { text: '이유를 말해 주는 사람은 아무도 없었다.' },
@@ -321,7 +397,7 @@
     const box = $('#intro-text');
     box.innerHTML = '';
     await wait(600);
-    for (const line of introLines(pending.name)) {
+    for (const line of introLines(pending.name, pending.story)) {
       if (tok !== introToken) return;
       const p = document.createElement('p');
       if (line.red) p.classList.add('red');
@@ -365,10 +441,11 @@
         store.set(KEY_SAVE, save);
       },
       onPermadeath() { store.del(KEY_SAVE); },
-      onClear(trueEnd) {
+      onClear(storyId, trueEnd) {
         store.del(KEY_SAVE);
-        const prev = store.get(KEY_CLEARED, null);
-        store.set(KEY_CLEARED, { trueEnd: trueEnd || !!(prev && prev.trueEnd) });
+        const cleared = getCleared();
+        cleared[storyId] = { trueEnd: trueEnd || !!(cleared[storyId] && cleared[storyId].trueEnd) };
+        store.set(KEY_CLEARED, cleared);
         exitGame();
       },
       onExit: exitGame,
@@ -393,6 +470,10 @@
       e.preventDefault();
       finishIntro();
     } else if (current === 'newgame' && e.key === 'Escape') {
+      show('story');
+    } else if (current === 'police' && e.key === 'Escape') {
+      show('story');
+    } else if (current === 'story' && e.key === 'Escape') {
       show('title');
     }
   });
