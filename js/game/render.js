@@ -1034,6 +1034,158 @@
     c.restore();
   }
 
+  // ───────── 점프스케어: 잡혔을 때 화면 가득 튀어나오는 얼굴 ─────────
+  // 얼굴은 (0,0) 중심, 반지름 약 400의 좌표계에서 그린다.
+
+  function girlFace(c, t, jit) {
+    c.fillStyle = '#020202'; // 뒤로 늘어진 머리카락
+    c.beginPath(); c.ellipse(0, 40, 440, 560, 0, 0, Math.PI * 2); c.fill();
+    const g = c.createRadialGradient(-30, -40, 30, 0, 20, 380);
+    g.addColorStop(0, '#dedbd2'); g.addColorStop(0.6, '#a19e95'); g.addColorStop(1, '#2e2d2a');
+    c.fillStyle = g;
+    c.beginPath(); c.ellipse(0, 30, 265, 355, 0, 0, Math.PI * 2); c.fill();
+    const r = rng(1998); // 핏줄
+    c.strokeStyle = 'rgba(60,40,60,.45)'; c.lineWidth = 2.5;
+    for (let i = 0; i < 14; i++) {
+      let x = (r() - 0.5) * 380, y = (r() - 0.5) * 420 + 40;
+      c.beginPath(); c.moveTo(x, y);
+      for (let k = 0; k < 5; k++) { x += (r() - 0.5) * 60; y += (r() - 0.5) * 60; c.lineTo(x, y); }
+      c.stroke();
+    }
+    for (const sd of [-1, 1]) { // 텅 빈 눈구멍
+      const ex = sd * 108, ey = -30;
+      const eg = c.createRadialGradient(ex, ey, 10, ex, ey, 130);
+      eg.addColorStop(0, '#000'); eg.addColorStop(0.55, '#000'); eg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = eg;
+      c.beginPath(); c.ellipse(ex, ey, 130, 100, sd * 0.12, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#f4f2ea';
+      c.beginPath(); c.arc(ex + jit * 0.4, ey + 4, 8, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#5c0707'; // 피눈물
+      c.beginPath(); c.moveTo(ex - 12, ey + 50); c.lineTo(ex + 12, ey + 50); c.lineTo(ex + 5, ey + 300); c.lineTo(ex - 6, ey + 300); c.fill();
+    }
+    c.fillStyle = '#000'; // 세로로 찢어진 입
+    c.beginPath(); c.ellipse(0, 235, 62, 120 + Math.sin(t * 30) * 8, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = 'rgba(120,20,20,.6)';
+    c.beginPath(); c.ellipse(0, 250, 34, 70, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#030303'; // 얼굴 위로 흘러내린 젖은 머리카락
+    const strands = [[-250, 90, 360], [-190, 60, 470], [-120, 40, 260], [150, 70, 430], [215, 80, 520], [255, 100, 380]];
+    for (const [x, w, len] of strands) {
+      c.beginPath();
+      c.moveTo(x - w / 2, -420);
+      c.quadraticCurveTo(x - w / 2 + 20, -100, x - 10, len);
+      c.lineTo(x + 6, len - 30);
+      c.quadraticCurveTo(x + w / 2 + 10, -100, x + w / 2, -420);
+      c.fill();
+    }
+    c.beginPath(); c.ellipse(0, -330, 280, 120, 0, Math.PI, 0); c.fill();
+  }
+
+  function managerFace(c, t, jit) {
+    c.fillStyle = '#0a0a0c'; // 연미복 깃
+    c.beginPath(); c.moveTo(-420, 600); c.lineTo(-160, 330); c.lineTo(160, 330); c.lineTo(420, 600); c.fill();
+    rect(c, -60, 330, 120, 200, '#9c988e');
+    c.fillStyle = '#4a0808';
+    c.beginPath(); c.moveTo(-70, 350); c.lineTo(0, 380); c.lineTo(70, 350); c.lineTo(70, 410); c.lineTo(0, 380); c.lineTo(-70, 410); c.fill();
+    const g = c.createRadialGradient(-40, -60, 30, 0, 0, 380);
+    g.addColorStop(0, '#d2cbb8'); g.addColorStop(0.6, '#958d7a'); g.addColorStop(1, '#2a2620');
+    c.fillStyle = g; // 길고 앙상한 얼굴
+    c.beginPath(); c.ellipse(0, 0, 230, 370, 0, 0, Math.PI * 2); c.fill();
+    const burn = c.createRadialGradient(150, 60, 20, 150, 60, 260); // 불에 탄 반쪽
+    burn.addColorStop(0, 'rgba(20,8,4,.95)'); burn.addColorStop(0.5, 'rgba(60,20,8,.8)'); burn.addColorStop(1, 'rgba(60,20,8,0)');
+    c.fillStyle = burn;
+    c.beginPath(); c.ellipse(0, 0, 230, 370, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = `rgba(230,110,30,${0.35 + Math.sin(t * 20) * 0.15})`; c.lineWidth = 3; // 아직 타는 균열
+    for (const [x, y] of [[120, -60], [170, 40], [110, 140], [190, 180]]) {
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + 30, y + 24); c.lineTo(x + 12, y + 50); c.stroke();
+    }
+    c.fillStyle = '#060606'; // 빗어 넘긴 머리
+    c.beginPath(); c.ellipse(0, -280, 240, 140, 0, Math.PI, 0); c.fill();
+    rect(c, -240, -290, 480, 40, '#060606');
+    for (const sd of [-1, 1]) { // 깊이 꺼진 눈
+      const ex = sd * 90, ey = -90;
+      const eg = c.createRadialGradient(ex, ey, 8, ex, ey, 110);
+      eg.addColorStop(0, '#000'); eg.addColorStop(0.6, '#000'); eg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = eg;
+      c.beginPath(); c.ellipse(ex, ey, 110, 80, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ff5a1a';
+      c.beginPath(); c.arc(ex + jit * 0.4, ey, 7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(255,90,26,.25)';
+      c.beginPath(); c.arc(ex + jit * 0.4, ey, 20, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = 'rgba(0,0,0,.35)'; // 움푹 꺼진 볼
+    c.beginPath(); c.ellipse(-140, 70, 50, 110, 0.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(140, 70, 50, 110, -0.2, 0, Math.PI * 2); c.fill();
+    const open = 70 + Math.sin(t * 24) * 6; // 귀까지 찢어진 웃음
+    c.fillStyle = '#000';
+    c.beginPath();
+    c.moveTo(-215, 120); c.quadraticCurveTo(0, 190, 215, 120);
+    c.quadraticCurveTo(0, 190 + open * 1.6, -215, 120);
+    c.fill();
+    c.fillStyle = '#e3dccb';
+    for (let k = -9; k <= 9; k++) {
+      const x = k * 21, top = 120 + 70 * (1 - (x / 215) ** 2) - 2;
+      rect(c, x - 7, top, 14, 26 - Math.abs(k));
+      const bot = 120 + (70 + open * 0.8) * (1 - (x / 215) ** 2);
+      rect(c, x - 7, bot - 22 + Math.abs(k), 14, 22 - Math.abs(k));
+    }
+  }
+
+  // el: 잡힌 뒤 지난 시간(초) · after: 게임오버 화면 뒤에 희미하게 남는 단계
+  R.scare = function (c, W, H, el, look, reduced, after) {
+    const D = Math.min(W, H);
+    const face = look === 'manager' ? managerFace : girlFace;
+    if (after) {
+      c.save();
+      c.globalAlpha = 0.16;
+      c.translate(W / 2, H / 2);
+      c.scale(D / 820, D / 820);
+      face(c, el, 0);
+      c.restore();
+      return;
+    }
+    c.save();
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, W, H);
+    const pop = Math.min(1, el / 0.08);
+    const grow = reduced ? 0.7 + Math.min(el, 1.5) * 0.25 : 0.95 + Math.min(el, 1.5) * 0.3;
+    const sc = (D / 900) * grow * (0.6 + 0.4 * pop);
+    const jit = reduced ? 0 : (Math.random() - 0.5) * 24;
+    const jx = reduced ? 0 : (Math.random() - 0.5) * 34 * (1.4 - Math.min(el, 1.2));
+    const jy = reduced ? 0 : (Math.random() - 0.5) * 24 * (1.4 - Math.min(el, 1.2));
+    const draw = (dx, alpha) => {
+      c.save();
+      c.globalAlpha = alpha;
+      c.translate(W / 2 + jx + dx, H / 2 + jy);
+      c.scale(sc, sc);
+      face(c, el, jit);
+      c.restore();
+    };
+    if (!reduced) { // 색이 어긋난 잔상
+      draw(-18, 0.35);
+      draw(18, 0.35);
+    }
+    draw(0, reduced ? Math.min(1, el / 0.4) : 1);
+    if (!reduced) {
+      for (let i = 0; i < 7; i++) { // 찢어지는 화면
+        const y = Math.random() * H, h = 3 + Math.random() * 30;
+        c.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,.85)' : 'rgba(220,220,210,.12)';
+        c.fillRect(0, y, W, h);
+      }
+      if (el < 0.45 && Math.random() < 0.35) { // 짧은 반전
+        c.globalCompositeOperation = 'difference';
+        c.fillStyle = '#fff';
+        c.fillRect(0, 0, W, H);
+        c.globalCompositeOperation = 'source-over';
+      }
+    }
+    const v = c.createRadialGradient(W / 2, H / 2, D * 0.25, W / 2, H / 2, D * 0.8);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(1, 'rgba(70,0,0,.85)');
+    c.fillStyle = v;
+    c.fillRect(0, 0, W, H);
+    c.restore();
+  };
+
   R.text = text;
   R.MONO = MONO;
   R.HAND = HAND;

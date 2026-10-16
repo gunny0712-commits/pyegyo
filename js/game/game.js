@@ -349,11 +349,14 @@
     G.dead = true;
     lock();
     if (G.player.hidden) { G.player.hidden = null; el.veil.classList.remove('on'); }
-    SFX.scare();
     SFX.stopLoops();
+    SFX.jumpscare();
     G.shake = 1;
+    G.scare = { start: performance.now() };
+    el.root.classList.add('scared');
+    el.sub.className = 'subtitle';
     const g0 = G;
-    await realWait(fromHide ? 900 : 1100);
+    await realWait(fromHide ? 1500 : 1700);
     if (G !== g0) return;
     G.overlay = 'dead';
     el.deadText.textContent = pick(ST.lines.dead);
@@ -876,6 +879,11 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(`E  ${label}`, px, py + 1);
     }
+
+    if (G.scare) {
+      const elapsed = (performance.now() - G.scare.start) / 1000;
+      R.scare(ctx, W, H, elapsed, look.ghost, settings.reduceFlicker, G.overlay === 'dead');
+    }
   }
 
   function frame(now) {
@@ -945,7 +953,7 @@
     el.veil.classList.remove('on');
     el.sub.className = 'subtitle';
     el.fade.classList.remove('on');
-    el.root.classList.remove('danger');
+    el.root.classList.remove('danger', 'scared');
     keys.clear();
     SFX.stopLoops();
   }

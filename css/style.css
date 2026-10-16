@@ -639,3 +639,7 @@ body.reduce-flicker #screen-game.danger::after { animation: none; }
   .dispatch { transform: none; }
   .story-name { font-size: 32px; }
 }
+
+/* 점프스케어 동안에는 HUD를 숨긴다 */
+#screen-game.scared .hud, #screen-game.scared .touch { opacity: 0; }
+#screen-game.scared::after { box-shadow: none; animation: none; }

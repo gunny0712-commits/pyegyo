@@ -451,6 +451,36 @@
       hbRate = rate;
       if (rate && !was && !hbTimer) heartbeatLoop();
     },
+    // 잡혔을 때: 일그러진 비명 + 쿵 하는 저음
+    jumpscare() {
+      if (!ac) return;
+      const t = ac.currentTime;
+      const ws = ac.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(x * 6); }
+      ws.curve = curve;
+      const g = gain();
+      env(g, t, 0.004, 0.42, 1.5);
+      ws.connect(g).connect(master);
+      const n = noise();
+      const bp = filter('bandpass', 3200, 2);
+      bp.frequency.setValueAtTime(3200, t);
+      bp.frequency.exponentialRampToValueAtTime(700, t + 1.3);
+      n.connect(bp).connect(ws);
+      n.start(t);
+      n.stop(t + 1.6);
+      [182, 193, 271, 379, 560].forEach(f => {
+        const o = ac.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f, t);
+        o.frequency.exponentialRampToValueAtTime(f * 0.55, t + 1.4);
+        const og = gain(0.18);
+        o.connect(og).connect(ws);
+        o.start(t);
+        o.stop(t + 1.6);
+      });
+      thump(t, 48, 0.7, 1.2);
+    },
     setTheme(name) { MELODY = MELODIES[name] || MELODIES.school; mbIdx = 0; },
     keys() { // 지배인의 열쇠 꾸러미
       if (!ac) return;
