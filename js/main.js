@@ -152,6 +152,12 @@
       : '';
   }
 
+  // Unity로 만든 3D 버전 (메인 메뉴 · 챕터 1~3)은 별도 페이지에 있다
+  function goStage3(hash) {
+    fade.classList.add('on');
+    setTimeout(() => { location.href = 'stage3/index.html' + hash; }, 800);
+  }
+
   async function act(action) {
     if (action === 'new') {
       if (store.get(KEY_SAVE, null)) {
@@ -162,6 +168,8 @@
     } else if (action === 'continue') {
       const save = store.get(KEY_SAVE, null);
       if (save) startGame(save);
+    } else if (action === '3d') {
+      goStage3('');
     } else if (action === 'settings') {
       openSettings();
     } else if (action === 'credits') {
@@ -321,7 +329,13 @@
 
   $$('.story-card').forEach(c => {
     c.addEventListener('mouseenter', () => SFX.hover());
-    c.addEventListener('click', () => { if (busy) return; SFX.click(); show(c.dataset.story === 'hotel' ? 'police' : 'newgame'); });
+    c.addEventListener('click', () => {
+      if (busy) return;
+      SFX.click();
+      // 에피소드 3은 Unity로 만든 별도 3D 페이지로 넘어간다
+      if (c.dataset.story === 'seal') { goStage3('#ch3'); return; }
+      show(c.dataset.story === 'hotel' ? 'police' : 'newgame');
+    });
   });
   $('#btn-story-back').addEventListener('click', () => { SFX.click(); show('title'); });
 

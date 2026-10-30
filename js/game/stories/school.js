@@ -151,7 +151,7 @@
       deco: [{ t: 'shelf', x: 330 }, { t: 'case', x: 470 }, { t: 'shelf', x: 590 }, { t: 'case', x: 660 }],
       objects: [
         { id: 's-door', type: 'door', art: 'roomdoor', x: 100, to: 'music', toX: 1170 },
-        { id: 's-wardrobe', type: 'use', use: 'wardrobe', art: 'wardrobe', x: 840, prompt: '열기' },
+        { id: 's-wardrobe', type: 'use', use: 'wardrobe', art: 'wardrobe', x: 840, w: 150, prompt: '열기' },
       ],
     },
   };
