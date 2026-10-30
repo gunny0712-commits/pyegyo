@@ -28,6 +28,30 @@
       </div>
     </div>
     <script>
+      // 포인터 락(마우스 고정) 요청이 거절되면 브라우저가 Promise 오류를 던지고,
+      // Unity 로더는 그걸 치명적 오류로 보고 게임을 멈춘다. (Esc 직후 바로 클릭할 때 등)
+      // 거절은 조용히 무시하고, 가능한 브라우저에서는 마우스 가속 없는 원본 이동량을 쓴다(시점 튐 방지).
+      (function () {
+        var orig = Element.prototype.requestPointerLock;
+        if (!orig) return;
+        Element.prototype.requestPointerLock = function () {
+          var el = this, p;
+          try { p = orig.call(el, { unadjustedMovement: true }); } catch (e) { p = null; }
+          if (p && typeof p.catch === 'function') {
+            return p.catch(function (err) {
+              if (err && err.name === 'NotSupportedError') {
+                try { var q = orig.call(el); if (q && q.catch) return q.catch(function () {}); } catch (e) {}
+              }
+            });
+          }
+          return p;
+        };
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason, msg = String(r && (r.message || r.name) || r || '');
+          if (/pointer ?lock/i.test(msg) || (r && r.name === 'WrongDocumentError')) { e.preventDefault(); e.stopImmediatePropagation(); }
+        });
+      })();
+
       let canvas = document.querySelector("#unity-canvas");
       let fullscreenContainer = document.querySelector("#unity-fullscreen-container");
 
@@ -57,12 +81,12 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL.loader.js?v=6";
+      var loaderUrl = buildUrl + "/WebGL.loader.js?v=7";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebGL.data?v=6",
-        frameworkUrl: buildUrl + "/WebGL.framework.js?v=6",
-        codeUrl: buildUrl + "/WebGL.wasm?v=6",
+        dataUrl: buildUrl + "/WebGL.data?v=7",
+        frameworkUrl: buildUrl + "/WebGL.framework.js?v=7",
+        codeUrl: buildUrl + "/WebGL.wasm?v=7",
         streamingAssetsUrl: "StreamingAssets",
 
         // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
