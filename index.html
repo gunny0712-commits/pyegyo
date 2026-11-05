@@ -80,13 +80,15 @@
         updateBannerVisibility();
       }
 
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebGL.loader.js?v=11";
+      // 빌드마다 폴더 이름(BUILD)을 바꾼다. 캐시된 예전 페이지가 새 데이터를 섞어 읽어 크래시 나는 것을 막는다
+      var BUILD = "12";
+      var buildUrl = "Build/" + BUILD;
+      var loaderUrl = buildUrl + "/WebGL.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebGL.data?v=11",
-        frameworkUrl: buildUrl + "/WebGL.framework.js?v=11",
-        codeUrl: buildUrl + "/WebGL.wasm?v=11",
+        dataUrl: buildUrl + "/WebGL.data",
+        frameworkUrl: buildUrl + "/WebGL.framework.js",
+        codeUrl: buildUrl + "/WebGL.wasm",
         streamingAssetsUrl: "StreamingAssets",
 
         // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
@@ -167,7 +169,18 @@
               });
             };
 
-      document.body.appendChild(script);
+      // 이 페이지가 캐시된 옛 버전이면 최신 페이지로 다시 연다
+      fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
+        .then((r) => (r.ok ? r.text() : BUILD))
+        .catch(() => BUILD)
+        .then((v) => {
+          v = v.trim();
+          if (v && v !== BUILD && location.search.indexOf("r=" + v) < 0) {
+            location.replace(location.pathname + "?r=" + v + location.hash);
+            return;
+          }
+          document.body.appendChild(script);
+        });
 
     </script>
   </body>
