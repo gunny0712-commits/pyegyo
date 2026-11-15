@@ -1,0 +1,10 @@
+{
+  "name": "pyegyo-nightmare-server",
+  "version": "1.0.0",
+  "description": "폐교 NIGHTMARE 온라인 멀티플레이 방 서버 (WebSocket 중계)",
+  "main": "server.js",
+  "private": true,
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "8.18.0" }
+}
