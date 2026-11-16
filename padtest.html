@@ -23,6 +23,7 @@
   <button id="b1">약하게</button>
   <button id="b2">세게</button>
   <button id="b3">트리거 진동</button>
+  <button id="b4">게임 속 짧은 진동</button>
   <pre id="info">패드를 기다리는 중… (패드 버튼을 눌러 주세요)</pre>
   <pre id="log"></pre>
 </main>
@@ -55,6 +56,7 @@
   }
   document.getElementById('b1').onclick = () => rumble('dual-rumble', 0.2, 0.6, 400);
   document.getElementById('b2').onclick = () => rumble('dual-rumble', 1, 1, 800);
+  document.getElementById('b4').onclick = () => rumble('dual-rumble', 0.4, 0.4, 130);
   document.getElementById('b3').onclick = () => rumble('trigger-rumble', 1, 1, 600);
   addEventListener('gamepadconnected', describe);
   addEventListener('gamepaddisconnected', describe);
