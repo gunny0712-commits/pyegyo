@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>패드 진동 점검</title>
+<style>
+  :root { --bg:#111; --fg:#eee; --dim:#999; --acc:#c33; --ok:#4c8; --bad:#e55; }
+  body { background:var(--bg); color:var(--fg); font:16px/1.6 -apple-system, "Apple SD Gothic Neo", sans-serif; margin:0; padding:24px 16px; }
+  main { max-width:640px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 8px; }
+  p { color:var(--dim); margin:4px 0 16px; }
+  button { background:#222; color:var(--fg); border:1px solid #444; border-radius:8px; padding:12px 16px; font-size:16px; margin:4px 4px 4px 0; cursor:pointer; }
+  button:hover { border-color:var(--acc); }
+  pre { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:12px; white-space:pre-wrap; word-break:break-all; font-size:14px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>패드 진동 점검</h1>
+  <p>패드를 연결하고 <b>패드 버튼을 아무거나 한 번</b> 누른 다음, 아래 버튼을 눌러 보세요.</p>
+  <button id="b1">약하게</button>
+  <button id="b2">세게</button>
+  <button id="b3">트리거 진동</button>
+  <pre id="info">패드를 기다리는 중… (패드 버튼을 눌러 주세요)</pre>
+  <pre id="log"></pre>
+</main>
+<script>
+  const info = document.getElementById('info'), log = document.getElementById('log');
+  const say = (t, cls) => { const s = document.createElement('div'); if (cls) s.className = cls; s.textContent = t; log.prepend(s); };
+  function pads() { return Array.from(navigator.getGamepads ? navigator.getGamepads() : []).filter(p => p && p.connected); }
+  function describe() {
+    const ps = pads();
+    if (!ps.length) { info.textContent = '패드를 기다리는 중… (패드 버튼을 눌러 주세요)\n브라우저: ' + navigator.userAgent; return; }
+    info.textContent = ps.map(p => {
+      const a = p.vibrationActuator;
+      return `#${p.index} ${p.id}\n  mapping: ${p.mapping || '(없음)'}\n  vibrationActuator: ${a ? '있음' : '없음'}` +
+        (a ? `\n  type: ${a.type || '-'}\n  effects: ${a.effects ? JSON.stringify(a.effects) : '-'}` : '') +
+        `\n  hapticActuators: ${p.hapticActuators ? p.hapticActuators.length : '없음'}`;
+    }).join('\n\n') + '\n\n브라우저: ' + navigator.userAgent;
+  }
+  function rumble(type, strong, weak, ms) {
+    const ps = pads();
+    if (!ps.length) { say('패드가 안 보입니다. 패드 버튼을 한 번 눌러 주세요.', 'bad'); return; }
+    for (const p of ps) {
+      const a = p.vibrationActuator;
+      if (!a || !a.playEffect) { say(`#${p.index}: 이 브라우저에서는 진동 기능이 없습니다 (vibrationActuator 없음)`, 'bad'); continue; }
+      const opt = { startDelay: 0, duration: ms, strongMagnitude: strong, weakMagnitude: weak };
+      if (type === 'trigger-rumble') { opt.leftTrigger = strong; opt.rightTrigger = strong; }
+      try {
+        a.playEffect(type, opt).then(r => say(`#${p.index} ${type}: ${r}`, r === 'complete' ? 'ok' : 'bad'), e => say(`#${p.index} ${type}: 실패 ${e}`, 'bad'));
+      } catch (e) { say(`#${p.index} ${type}: 실패 ${e}`, 'bad'); }
+    }
+  }
+  document.getElementById('b1').onclick = () => rumble('dual-rumble', 0.2, 0.6, 400);
+  document.getElementById('b2').onclick = () => rumble('dual-rumble', 1, 1, 800);
+  document.getElementById('b3').onclick = () => rumble('trigger-rumble', 1, 1, 600);
+  addEventListener('gamepadconnected', describe);
+  addEventListener('gamepaddisconnected', describe);
+  setInterval(describe, 1000);
+</script>
+</body>
+</html>
