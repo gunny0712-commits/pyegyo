@@ -1,194 +1,418 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>폐교 3D</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body style="background:#050505">
-    <div id="unity-container" class="unity-desktop">
-      <div id="unity-fullscreen-container">
-        <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
-        <div id="unity-loading-container">
-          <div id="unity-loading-bar">
-            <div id="unity-logo"></div>
-            <div id="unity-progress-bar-empty">
-              <div id="unity-progress-bar-full"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">폐교 3D · 챕터 1~3</div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>놀이터 게임존</title>
+  <meta name="description" content="손전등 하나로 버려진 곳을 탐험하는 3D 공포 게임 모음. 브라우저에서 바로 플레이.">
+  <link rel="icon" href="TemplateData/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    // 예전 주소(…/pyegyo/#ch1 등)로 들어오면 게임 화면으로 바로 보낸다
+    (function () {
+      var h = location.hash;
+      if (/^#(ch[1-3]|nm2?solo|nm2?)$/.test(h)) location.replace('play/' + h);
+    })();
+  </script>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --ink: #1d2230;
+      --sub: #5d6475;
+      --line: #e3e7ef;
+      --brand: #6c4cf5;
+      --brand-2: #ff6b8a;
+      --accent: #ffb020;
+      --green: #1fbf75;
+      --night: #241b3d;
+      --chip: #eef0f7;
+      --shadow: 0 6px 18px rgba(30, 35, 60, .08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12131a; --card: #1c1e28; --ink: #eef0f6; --sub: #a3a9b8; --line: #2b2e3b;
+        --chip: #262937; --night: #0d0b16; --shadow: 0 6px 18px rgba(0, 0, 0, .35);
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #12131a; --card: #1c1e28; --ink: #eef0f6; --sub: #a3a9b8; --line: #2b2e3b;
+      --chip: #262937; --night: #0d0b16; --shadow: 0 6px 18px rgba(0, 0, 0, .35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--ink); font-family: "Noto Sans KR", system-ui, sans-serif; font-size: 15px; line-height: 1.55; }
+    a { color: inherit; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 16px; }
+
+    /* 맨 위 */
+    header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+    .top { display: flex; align-items: center; gap: 18px; height: 72px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+    .logo-mark { width: 42px; height: 42px; border-radius: 13px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); display: grid; place-items: center; color: #fff; font-family: "Jua"; font-size: 24px; box-shadow: var(--shadow); }
+    .logo-text { font-family: "Jua"; font-size: 26px; letter-spacing: -.5px; }
+    .logo-text b { color: var(--brand); font-weight: normal; }
+    .search { flex: 1; max-width: 520px; display: flex; align-items: center; background: var(--chip); border: 2px solid transparent; border-radius: 999px; padding: 0 16px; height: 46px; transition: border-color .15s; }
+    .search:focus-within { border-color: var(--brand); background: var(--card); }
+    .search input { flex: 1; border: 0; outline: 0; background: transparent; font: inherit; color: var(--ink); min-width: 0; }
+    .search svg { width: 20px; height: 20px; color: var(--sub); flex-shrink: 0; }
+    .top-right { margin-left: auto; display: flex; gap: 8px; }
+    .icon-btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; height: 40px; padding: 0 14px; font: inherit; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; }
+    .icon-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+    /* 분류 */
+    nav.cats { background: var(--card); border-bottom: 1px solid var(--line); }
+    .cat-row { display: flex; gap: 8px; padding: 10px 16px 12px; overflow-x: auto; scrollbar-width: none; }
+    .cat-row::-webkit-scrollbar { display: none; }
+    .cat { border: 0; background: var(--chip); color: var(--ink); font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 999px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+    .cat .dot { width: 9px; height: 9px; border-radius: 50%; }
+    .cat.on { background: var(--brand); color: #fff; }
+
+    main.wrap { padding-top: 22px; padding-bottom: 40px; }
+    .grid-main { display: grid; grid-template-columns: 1fr 300px; gap: 22px; align-items: start; }
+
+    /* 큰 배너 */
+    .hero { position: relative; border-radius: 22px; overflow: hidden; background: var(--night); color: #fff; min-height: 300px; box-shadow: var(--shadow); }
+    .slide { position: absolute; inset: 0; display: flex; align-items: flex-end; opacity: 0; transition: opacity .6s; pointer-events: none; }
+    .slide.on { opacity: 1; pointer-events: auto; }
+    .slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .slide::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10, 6, 20, .92) 0%, rgba(10, 6, 20, .55) 45%, rgba(10, 6, 20, .05) 100%); }
+    .slide-body { position: relative; z-index: 1; padding: 30px 32px 40px; max-width: 520px; }
+    .badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-right: 4px; }
+    .b-new { background: var(--brand-2); color: #fff; }
+    .b-beta { background: var(--accent); color: #2a1a00; }
+    .b-multi { background: var(--green); color: #fff; }
+    .slide h2 { font-family: "Jua"; font-weight: normal; font-size: 38px; line-height: 1.15; margin: 10px 0 8px; }
+    .slide p { margin: 0 0 18px; color: #e7e3f3; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 11px 22px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+    .btn-play { background: #fff; color: #2a1d55; }
+    .btn-play:hover { background: var(--accent); }
+    .btn-ghost { background: rgba(255, 255, 255, .16); color: #fff; margin-left: 6px; }
+    .btn-ghost:hover { background: rgba(255, 255, 255, .28); }
+    .dots { position: absolute; right: 22px; bottom: 16px; display: flex; gap: 7px; z-index: 2; }
+    .dots button { width: 9px; height: 9px; border-radius: 99px; border: 0; background: rgba(255, 255, 255, .45); cursor: pointer; padding: 0; transition: width .2s; }
+    .dots button.on { width: 26px; background: #fff; }
+
+    /* 제목줄 */
+    .sec-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
+    .sec-head h3 { font-family: "Jua"; font-weight: normal; font-size: 24px; margin: 0; }
+    .sec-head span { color: var(--sub); font-size: 14px; }
+
+    /* 게임 카드 */
+    .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+    .game { background: var(--card); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s; }
+    .game:hover { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(30, 35, 60, .14); }
+    .thumb { position: relative; aspect-ratio: 16 / 9; background: #111; cursor: pointer; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb .badges { position: absolute; top: 10px; left: 10px; }
+    .thumb .play-ico { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .15s; background: rgba(0, 0, 0, .35); }
+    .thumb:hover .play-ico { opacity: 1; }
+    .play-ico span { width: 56px; height: 56px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+    .play-ico svg { width: 22px; height: 22px; color: var(--brand); margin-left: 3px; }
+    .game-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .game-series { font-size: 12px; font-weight: 700; color: var(--brand); }
+    .game h4 { margin: 0; font-size: 17px; line-height: 1.35; }
+    .game p { margin: 0; color: var(--sub); font-size: 13.5px; flex: 1; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag { font-size: 12px; background: var(--chip); color: var(--sub); padding: 3px 8px; border-radius: 6px; }
+    .scary { color: #e0465f; letter-spacing: 1px; }
+    .game-actions { display: flex; gap: 6px; margin-top: 4px; }
+    .game-actions .btn { padding: 9px 16px; font-size: 14px; }
+    .btn-main { background: var(--brand); color: #fff; flex: 1; justify-content: center; }
+    .btn-main:hover { filter: brightness(1.08); }
+    .btn-sub { background: var(--chip); color: var(--ink); }
+    .btn-sub:hover { background: var(--line); }
+    .empty { grid-column: 1 / -1; text-align: center; padding: 40px 0; color: var(--sub); background: var(--card); border-radius: 18px; }
+
+    /* 오른쪽 */
+    aside { display: flex; flex-direction: column; gap: 16px; }
+    .box { background: var(--card); border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+    .box h5 { font-family: "Jua"; font-weight: normal; font-size: 19px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    .welcome { background: linear-gradient(135deg, var(--brand), #8f6bff 60%, var(--brand-2)); color: #fff; }
+    .welcome p { margin: 0 0 12px; opacity: .92; font-size: 14px; }
+    .welcome .btn { background: #fff; color: var(--brand); width: 100%; justify-content: center; }
+    .recent { display: flex; flex-direction: column; gap: 8px; }
+    .recent a { display: flex; align-items: center; gap: 10px; text-decoration: none; padding: 6px; border-radius: 10px; }
+    .recent a:hover { background: var(--chip); }
+    .recent img { width: 64px; height: 36px; object-fit: cover; border-radius: 6px; }
+    .recent small { color: var(--sub); display: block; font-size: 12px; }
+    .muted { color: var(--sub); font-size: 13.5px; margin: 0; }
+    .notice { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    .notice li { display: flex; gap: 8px; font-size: 14px; }
+    .notice time { color: var(--sub); font-size: 12px; flex-shrink: 0; width: 42px; padding-top: 2px; }
+    .keys { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .keys td { padding: 5px 0; border-bottom: 1px dashed var(--line); }
+    .keys td:first-child { width: 92px; }
+    kbd { font-family: inherit; font-size: 12px; background: var(--chip); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
+    .warn { border: 2px solid #ffd3dc; }
+    .warn h5 { color: #e0465f; }
+
+    footer { border-top: 1px solid var(--line); background: var(--card); color: var(--sub); font-size: 13px; padding: 22px 0 30px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; }
+
+    .mobile-note { display: none; background: #fff4d6; color: #6b4a00; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: 14px; }
+
+    @media (max-width: 960px) {
+      .grid-main { grid-template-columns: 1fr; }
+      aside { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .top { height: auto; flex-wrap: wrap; padding: 10px 0; gap: 10px; }
+      .search { order: 3; max-width: none; flex-basis: 100%; }
+      .logo-text { font-size: 22px; }
+      .hero { min-height: 340px; }
+      .slide h2 { font-size: 28px; }
+      .slide-body { padding: 22px 20px 40px; }
+      .slide::after { background: linear-gradient(0deg, rgba(10, 6, 20, .95) 0%, rgba(10, 6, 20, .55) 60%, rgba(10, 6, 20, .1) 100%); }
+      .icon-btn .lbl { display: none; }
+      .mobile-note { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap top">
+      <a class="logo" href="./" aria-label="놀이터 게임존 처음으로">
+        <span class="logo-mark">놀</span>
+        <span class="logo-text">놀이터 <b>게임존</b></span>
+      </a>
+      <label class="search">
+        <input id="q" type="search" placeholder="게임 이름, 장소, 괴물을 찾아보세요" autocomplete="off" aria-label="게임 검색">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </label>
+      <div class="top-right">
+        <a class="icon-btn" href="#keys" title="조작법"><span aria-hidden="true">⌨</span><span class="lbl">조작법</span></a>
+        <button class="icon-btn" id="theme" title="밝게 · 어둡게"><span aria-hidden="true">◐</span><span class="lbl">화면</span></button>
       </div>
     </div>
-    <script>
-      // 포인터 락(마우스 고정) 요청이 거절되면 브라우저가 Promise 오류를 던지고,
-      // Unity 로더는 그걸 치명적 오류로 보고 게임을 멈춘다. (Esc 직후 바로 클릭할 때 등)
-      // 거절은 조용히 무시하고, 가능한 브라우저에서는 마우스 가속 없는 원본 이동량을 쓴다(시점 튐 방지).
-      (function () {
-        var orig = Element.prototype.requestPointerLock;
-        if (!orig) return;
-        Element.prototype.requestPointerLock = function () {
-          var el = this, p;
-          try { p = orig.call(el, { unadjustedMovement: true }); } catch (e) { p = null; }
-          if (p && typeof p.catch === 'function') {
-            return p.catch(function (err) {
-              if (err && err.name === 'NotSupportedError') {
-                try { var q = orig.call(el); if (q && q.catch) return q.catch(function () {}); } catch (e) {}
-              }
-            });
-          }
-          return p;
-        };
-        window.addEventListener('unhandledrejection', function (e) {
-          var r = e.reason, msg = String(r && (r.message || r.name) || r || '');
-          if (/pointer ?lock/i.test(msg) || (r && r.name === 'WrongDocumentError')) { e.preventDefault(); e.stopImmediatePropagation(); }
-        });
-      })();
+  </header>
 
-      let canvas = document.querySelector("#unity-canvas");
-      let fullscreenContainer = document.querySelector("#unity-fullscreen-container");
+  <nav class="cats">
+    <div class="wrap cat-row" id="cats">
+      <button class="cat on" data-cat="all">전체</button>
+      <button class="cat" data-cat="new"><span class="dot" style="background:var(--brand-2)"></span>새로 나온</button>
+      <button class="cat" data-cat="story"><span class="dot" style="background:var(--brand)"></span>스토리 공포</button>
+      <button class="cat" data-cat="multi"><span class="dot" style="background:var(--green)"></span>친구랑 같이 (온라인)</button>
+      <button class="cat" data-cat="puzzle"><span class="dot" style="background:var(--accent)"></span>퍼즐·미니게임</button>
+      <button class="cat" data-cat="chase"><span class="dot" style="background:#e0465f"></span>추격전</button>
+    </div>
+  </nav>
 
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
+  <main class="wrap">
+    <div class="mobile-note">이 게임들은 <b>PC(크롬·엣지)</b>에서 키보드·마우스 또는 게임패드로 할 수 있어요. 휴대폰에서는 화면만 둘러볼 수 있습니다.</div>
+    <div class="grid-main">
+      <div>
+        <section class="hero" id="hero" aria-label="추천 게임">
+          <div class="dots" id="dots"></div>
+        </section>
 
-      // NIGHTMARE 온라인 방 서버 주소. 도메인에 서버(server/server.js)를 올린 뒤 여기에 적는다.
-      //   예: window.NIGHTMARE_SERVER = "wss://nightmare.내도메인.com";
-      // 비워 두면 내 컴퓨터(localhost)에서 열 때만 ws://localhost:8787 로 접속하고, 그 밖에서는 혼자 하기만 된다.
-      // 주소창에 ?server=wss://… 를 붙여 잠깐 다른 서버로 접속할 수도 있다.
-      window.NIGHTMARE_SERVER = "";
+        <div class="sec-head"><h3 id="list-title">모든 게임</h3><span id="count"></span></div>
+        <section class="games" id="games"></section>
+      </div>
 
-      // 빌드마다 폴더 이름(BUILD)을 바꾼다. 캐시된 예전 페이지가 새 데이터를 섞어 읽어 크래시 나는 것을 막는다
-      var BUILD = "49";
-      var buildUrl = "Build/" + BUILD;
-      var loaderUrl = buildUrl + "/WebGL.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/WebGL.data",
-        frameworkUrl: buildUrl + "/WebGL.framework.js",
-        codeUrl: buildUrl + "/WebGL.wasm",
-        streamingAssetsUrl: "StreamingAssets",
+      <aside>
+        <div class="box welcome">
+          <h5>👋 어서 와요!</h5>
+          <p>손전등 하나로 버려진 곳을 탐험하는 3D 공포 게임 모음이에요. 설치 없이 브라우저에서 바로 즐겨요.</p>
+          <a class="btn" href="play/" data-id="menu">게임 메뉴 열기</a>
+        </div>
 
-        // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
-        // you can pass fullscreenElementID: "my-unity-fullscreen-container-id", in this configuration field to
-        // explicitly point to the element tree root that is displayed in fullscreen mode.
-        fullscreenElementID: "unity-fullscreen-container",
+        <div class="box">
+          <h5>🕹 최근에 한 게임</h5>
+          <div class="recent" id="recent"><p class="muted">아직 없어요. 마음에 드는 게임을 골라 보세요!</p></div>
+        </div>
 
-        companyName: "gunny",
-        productName: "Pyegyo 3D",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
+        <div class="box">
+          <h5>📢 새 소식</h5>
+          <ul class="notice">
+            <li><time>11.24</time><span><b>NIGHTMARE 챕터 2</b> 맵과 캐릭터가 새 모델로 바뀌었어요</span></li>
+            <li><time>11.24</time><span>NIGHTMARE 챕터 2 <b>베타</b> 공개! 폐장된 놀이공원과 거인 광대</span></li>
+            <li><time>11.24</time><span>챕터 1 야자 시간 선생님이 덜 따라다녀요</span></li>
+            <li><time>11.23</time><span>NIGHTMARE 챕터 1 보스전 브금 추가</span></li>
+          </ul>
+        </div>
+
+        <div class="box" id="keys">
+          <h5>⌨ 조작법</h5>
+          <table class="keys">
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>이동</td></tr>
+            <tr><td>마우스</td><td>둘러보기</td></tr>
+            <tr><td><kbd>Shift</kbd></td><td>달리기 (숨이 차요)</td></tr>
+            <tr><td><kbd>E</kbd></td><td>조사 · 문 열기 · 숨기</td></tr>
+            <tr><td><kbd>F</kbd></td><td>손전등</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>소지품</td></tr>
+            <tr><td><kbd>M</kbd></td><td>지도</td></tr>
+            <tr><td><kbd>Space</kbd> <kbd>C</kbd></td><td>점프 · 슬라이딩 (챕터 2)</td></tr>
+          </table>
+          <p class="muted" style="margin-top:10px">듀얼센스·엑스박스 패드도 돼요. 게임 메뉴의 설정에서 진동을 켤 수 있어요.</p>
+        </div>
+
+        <div class="box warn">
+          <h5>⚠ 이용 안내</h5>
+          <p class="muted">갑자기 놀라는 장면과 어두운 분위기가 있어요. <b>12세 이상</b>에게 권해요. 밤늦게 혼자 할 때는 조심하세요!</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>놀이터 게임존 · 기획·개발 gunny</span>
+      <span>Unity 6 · WebGL · PC 크롬·엣지 권장</span>
+    </div>
+  </footer>
+
+  <script>
+    // 게임 목록 (play/ 뒤의 #주소로 바로 들어간다)
+    var GAMES = [
+      { id: 'nm2', series: 'NIGHTMARE · 챕터 2', title: '폐장된 놀이공원', img: 'assets/nm2.jpg', hash: '#nm2solo', multi: '#nm2',
+        desc: '연등 미로 끝에서 만난 야간 놀이공원. 탑승권을 끊고, 유령의 집을 지나, 멈추지 않는 인형탈에게서 도망쳐요.',
+        tags: ['혼자 · 최대 4명', '오픈월드', '미니게임 3종'], scary: 4, cats: ['new', 'multi', 'puzzle', 'chase'], badges: ['new', 'beta', 'multi'],
+        keywords: '나이트메어 놀이공원 회전목마 관람차 인형탈 곰 거인 광대 서커스 사격장 범퍼카 유령의집' },
+      { id: 'nm1', series: 'NIGHTMARE · 챕터 1', title: '연화예고', img: 'assets/nm1.jpg', hash: '#nmsolo', multi: '#nm',
+        desc: '안개 낀 교정, 탈이 걸린 복도, 부서진 각시탈. 친구와 네 글자 코드로 모여 함께 탈출해요.',
+        tags: ['혼자 · 최대 4명', '보스전', '야자 시간'], scary: 4, cats: ['story', 'multi', 'chase'], badges: ['multi'],
+        keywords: '나이트메어 연화예고 탈 각시탈 연등 미로 야자 교무주임 기록보관실' },
+      { id: 'ch1', series: '폐교 3D · 챕터 1', title: '폐교 — 남겨진 교실', img: 'assets/ch1.jpg', hash: '#ch1',
+        desc: '1998년에 문을 닫은 월하고등학교. 아직 끝나지 않은 숨바꼭질이 시작돼요.',
+        tags: ['혼자', '스토리', '진 엔딩'], scary: 3, cats: ['story', 'chase'], badges: [],
+        keywords: '폐교 학교 교실 소연 숨바꼭질 사물함 출석부' },
+      { id: 'ch2', series: '폐교 3D · 챕터 2', title: '체크아웃 — 숲속의 백운호텔', img: 'assets/ch2.jpg', hash: '#ch2',
+        desc: '새벽 신고를 받고 출동한 경찰이 화재로 버려진 호텔에 갇혀요. 금고, 지하 미로, 배전반 퍼즐.',
+        tags: ['혼자', '퍼즐', '추격전'], scary: 3, cats: ['story', 'puzzle', 'chase'], badges: [],
+        keywords: '호텔 백운 경찰 지배인 금고 지하 미로 배전반 비상계단' },
+      { id: 'ch3', series: '폐교 3D · 챕터 3', title: '봉인 — 숲속의 송씨 저택', img: 'assets/ch3.jpg', hash: '#ch3',
+        desc: '흉가 체험 방송 중 찢어진 부적 한 장. 대저택과 지하 굿방에서 부적 네 장을 모아요.',
+        tags: ['혼자', '퍼즐', '미니게임'], scary: 4, cats: ['story', 'puzzle'], badges: [],
+        keywords: '저택 부적 굿 괘종시계 사당 위패 피아노 방울' }
+    ];
+    var SLIDES = [
+      { img: 'assets/hero.jpg', badges: ['new', 'beta'], title: '거인 광대의<br>붉은 서커스 미로', text: 'NIGHTMARE 챕터 2 베타 공개! 벽 너머로 내려다보는 거인 광대를 피해 오르골을 완성하세요.', game: 'nm2' },
+      { img: 'assets/nm2.jpg', badges: ['multi'], title: '친구 셋을 불러<br>놀이공원 탈출', text: '방을 만들면 네 글자 코드가 나와요. 최대 4명이 함께 셔터를 들어 올리고 발전기를 고쳐요.', game: 'nm2', multi: true },
+      { img: 'assets/nm1.jpg', badges: [], title: '연등이 켜진<br>폐교, 연화예고', text: '부서진 각시탈과 교무주임이 기다리는 NIGHTMARE 챕터 1.', game: 'nm1' }
+    ];
+    var BADGE = { new: '<span class="badge b-new">NEW</span>', beta: '<span class="badge b-beta">베타</span>', multi: '<span class="badge b-multi">협동</span>' };
+    var PLAY_ICO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+    function byId(id) { for (var i = 0; i < GAMES.length; i++) if (GAMES[i].id === id) return GAMES[i]; return null; }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    // 최근에 한 게임 (이 브라우저에만 저장)
+    function loadRecent() { try { return JSON.parse(localStorage.getItem('playground.recent') || '[]'); } catch (e) { return []; } }
+    function saveRecent(id) {
+      try {
+        var r = loadRecent().filter(function (x) { return x.id !== id; });
+        r.unshift({ id: id, t: Date.now() });
+        localStorage.setItem('playground.recent', JSON.stringify(r.slice(0, 4)));
+      } catch (e) {}
+    }
+    function ago(t) {
+      var m = Math.round((Date.now() - t) / 60000);
+      if (m < 1) return '방금'; if (m < 60) return m + '분 전';
+      var h = Math.round(m / 60); if (h < 24) return h + '시간 전';
+      return Math.round(h / 24) + '일 전';
+    }
+    function renderRecent() {
+      var r = loadRecent(), box = document.getElementById('recent');
+      var html = r.map(function (x) {
+        var g = byId(x.id); if (!g) return '';
+        return '<a href="play/' + g.hash + '" data-id="' + g.id + '"><img src="' + g.img + '" alt=""><span><b>' + esc(g.title) + '</b><small>' + esc(g.series) + ' · ' + ago(x.t) + '</small></span></a>';
+      }).join('');
+      if (html) box.innerHTML = html;
+    }
+
+    // 게임 카드
+    var cat = 'all';
+    function renderGames() {
+      var q = document.getElementById('q').value.trim().toLowerCase();
+      var list = GAMES.filter(function (g) {
+        if (cat !== 'all' && g.cats.indexOf(cat) < 0) return false;
+        if (!q) return true;
+        return (g.title + ' ' + g.series + ' ' + g.desc + ' ' + g.keywords + ' ' + g.tags.join(' ')).toLowerCase().indexOf(q) >= 0;
+      });
+      var titles = { all: '모든 게임', new: '새로 나온 게임', story: '스토리 공포', multi: '친구랑 같이 (온라인)', puzzle: '퍼즐·미니게임', chase: '추격전' };
+      document.getElementById('list-title').textContent = q ? '‘' + q + '’ 찾은 결과' : titles[cat];
+      document.getElementById('count').textContent = list.length + '개';
+      var el = document.getElementById('games');
+      if (!list.length) { el.innerHTML = '<div class="empty">찾는 게임이 없어요. 다른 낱말로 찾아보세요.</div>'; return; }
+      el.innerHTML = list.map(function (g) {
+        var scary = '<span class="tag">무서움 <span class="scary">' + '●'.repeat(g.scary) + '</span>' + '○'.repeat(5 - g.scary) + '</span>';
+        return '<article class="game">' +
+          '<a class="thumb" href="play/' + g.hash + '" data-id="' + g.id + '" aria-label="' + esc(g.title) + ' 하기">' +
+            '<img src="' + g.img + '" alt="' + esc(g.title) + ' 장면" loading="lazy">' +
+            '<span class="badges">' + g.badges.map(function (b) { return BADGE[b]; }).join('') + '</span>' +
+            '<span class="play-ico"><span>' + PLAY_ICO + '</span></span></a>' +
+          '<div class="game-body">' +
+            '<div class="game-series">' + esc(g.series) + '</div>' +
+            '<h4>' + esc(g.title) + '</h4>' +
+            '<p>' + esc(g.desc) + '</p>' +
+            '<div class="tags">' + g.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + scary + '</div>' +
+            '<div class="game-actions">' +
+              '<a class="btn btn-main" href="play/' + g.hash + '" data-id="' + g.id + '">▶ ' + (g.multi ? '혼자 하기' : '바로 하기') + '</a>' +
+              (g.multi ? '<a class="btn btn-sub" href="play/' + g.multi + '" data-id="' + g.id + '">친구랑</a>' : '') +
+            '</div>' +
+          '</div></article>';
+      }).join('');
+    }
+
+    // 큰 배너 (6초마다 넘어간다)
+    var cur = 0, timer;
+    function renderHero() {
+      var hero = document.getElementById('hero'), dots = document.getElementById('dots');
+      SLIDES.forEach(function (s, i) {
+        var g = byId(s.game);
+        var d = document.createElement('div');
+        d.className = 'slide' + (i === 0 ? ' on' : '');
+        d.innerHTML = '<img src="' + s.img + '" alt="">' +
+          '<div class="slide-body">' + s.badges.map(function (b) { return BADGE[b]; }).join('') +
+          '<h2>' + s.title + '</h2><p>' + esc(s.text) + '</p>' +
+          '<a class="btn btn-play" href="play/' + (s.multi ? g.multi : g.hash) + '" data-id="' + g.id + '">▶ ' + (s.multi ? '방 만들기' : '지금 하기') + '</a>' +
+          (!s.multi && g.multi ? '<a class="btn btn-ghost" href="play/' + g.multi + '" data-id="' + g.id + '">친구랑 하기</a>' : '') +
+          '</div>';
+        hero.insertBefore(d, dots);
+        var b = document.createElement('button');
+        b.setAttribute('aria-label', (i + 1) + '번째 추천');
+        if (i === 0) b.className = 'on';
+        b.onclick = function () { go(i); restart(); };
+        dots.appendChild(b);
+      });
+    }
+    function go(i) {
+      var slides = document.querySelectorAll('.slide'), dots = document.querySelectorAll('#dots button');
+      slides[cur].classList.remove('on'); dots[cur].classList.remove('on');
+      cur = (i + slides.length) % slides.length;
+      slides[cur].classList.add('on'); dots[cur].classList.add('on');
+    }
+    function restart() { clearInterval(timer); timer = setInterval(function () { go(cur + 1); }, 6000); }
+
+    // 화면 밝기 (기기 설정을 따르되, 직접 바꾸면 기억한다)
+    (function () {
+      var root = document.documentElement, saved = null;
+      try { saved = localStorage.getItem('playground.theme'); } catch (e) {}
+      if (saved) root.setAttribute('data-theme', saved);
+      document.getElementById('theme').onclick = function () {
+        var dark = root.getAttribute('data-theme') ? root.getAttribute('data-theme') === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        var next = dark ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('playground.theme', next); } catch (e) {}
       };
+    })();
 
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
+    document.getElementById('cats').addEventListener('click', function (e) {
+      var b = e.target.closest('.cat'); if (!b) return;
+      document.querySelectorAll('.cat').forEach(function (x) { x.classList.toggle('on', x === b); });
+      cat = b.getAttribute('data-cat');
+      renderGames();
+    });
+    document.getElementById('q').addEventListener('input', renderGames);
+    // 게임을 누르면 '최근에 한 게임'에 남긴다
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('a[data-id]');
+      if (a && a.getAttribute('data-id') !== 'menu') saveRecent(a.getAttribute('data-id'));
+    });
 
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas container in a window that can be maximized to fullscreen:
-        fullscreenContainer.style.width = "1280px";
-        fullscreenContainer.style.height = "720px";
-      }
-
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        const loadingContainer = document.querySelector("#unity-loading-container");
-        const progressBarFull = document.querySelector("#unity-progress-bar-full");
-
-        createUnityInstance(canvas, config, (progress) => {
-          if (progress < 1) {
-            loadingContainer.style.display = "block";
-            progressBarFull.style.width = 100 * progress + "%";
-          } else {
-            loadingContainer.style.display = "none";
-          }
-        }).then((unityInstance) => {
-                window.unityInstance = unityInstance;
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-
-              }).catch((message) => {
-                alert(message);
-              });
-            };
-
-      // 이 페이지가 캐시된 옛 버전이면 최신 페이지로 다시 연다
-      fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
-        .then((r) => (r.ok ? r.text() : BUILD))
-        .catch(() => BUILD)
-        .then((v) => {
-          v = v.trim();
-          if (v && v !== BUILD && location.search.indexOf("r=" + v) < 0) {
-            location.replace(location.pathname + "?r=" + v + location.hash);
-            return;
-          }
-          document.body.appendChild(script);
-        });
-
-    </script>
-  </body>
+    renderHero(); restart(); renderGames(); renderRecent();
+  </script>
+</body>
 </html>

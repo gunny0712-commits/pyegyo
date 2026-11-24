@@ -8,8 +8,9 @@
 
 - **NIGHTMARE 챕터 1 · 연화예고**: 온라인 협동(최대 4명) 또는 혼자. 안개 낀 교정, 탈이 걸린 본관 복도, '부서진 각시탈'의 추격, 강당의 의식. 메인 메뉴의 NIGHTMARE에서 방을 만들고 네 글자 코드로 친구를 부른다. 온라인 방 서버는 `server/` (도메인에 올리는 방법은 [server/README.md](server/README.md)).
 
-플레이: https://gunny0712-commits.github.io/pyegyo/
-(`#ch1` · `#ch2` · `#ch3`를 주소 뒤에 붙이면 해당 챕터로 바로 들어간다)
+놀이터(첫 화면): https://gunny0712-commits.github.io/pyegyo/
+게임 바로 열기: https://gunny0712-commits.github.io/pyegyo/play/
+(`#ch1` · `#ch2` · `#ch3` · `#nmsolo` · `#nm2solo` · `#nm` · `#nm2`를 주소 뒤에 붙이면 해당 챕터로 바로 들어간다. 예전 주소에 붙여도 넘어간다)
 
 ## 조작
 
@@ -27,7 +28,9 @@
 ## 구조
 
 ```
-index.html       WebGL 로더 페이지
+index.html       놀이터 첫 화면 (게임 목록·검색·최근에 한 게임)
+assets/          첫 화면 그림 (게임 장면)
+play/index.html  WebGL 로더 페이지 (게임 화면)
 Build/           Unity WebGL 빌드 (메인 메뉴 · 챕터 1~3)
 TemplateData/    로더 페이지 이미지·스타일
 stage3/          예전 주소 → 첫 화면으로 이동

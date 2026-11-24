@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>폐교 3D</title>
+    <link rel="shortcut icon" href="../TemplateData/favicon.ico">
+    <link rel="stylesheet" href="../TemplateData/style.css">
+  </head>
+  <body style="background:#050505">
+    <div id="unity-container" class="unity-desktop">
+      <div id="unity-fullscreen-container">
+        <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
+        <div id="unity-loading-container">
+          <div id="unity-loading-bar">
+            <div id="unity-logo"></div>
+            <div id="unity-progress-bar-empty">
+              <div id="unity-progress-bar-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-logo-title-footer"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title"><a href="../" style="color:#bbb;text-decoration:none">← 놀이터로 돌아가기</a> · 폐교 3D</div>
+      </div>
+    </div>
+    <script>
+      // 포인터 락(마우스 고정) 요청이 거절되면 브라우저가 Promise 오류를 던지고,
+      // Unity 로더는 그걸 치명적 오류로 보고 게임을 멈춘다. (Esc 직후 바로 클릭할 때 등)
+      // 거절은 조용히 무시하고, 가능한 브라우저에서는 마우스 가속 없는 원본 이동량을 쓴다(시점 튐 방지).
+      (function () {
+        var orig = Element.prototype.requestPointerLock;
+        if (!orig) return;
+        Element.prototype.requestPointerLock = function () {
+          var el = this, p;
+          try { p = orig.call(el, { unadjustedMovement: true }); } catch (e) { p = null; }
+          if (p && typeof p.catch === 'function') {
+            return p.catch(function (err) {
+              if (err && err.name === 'NotSupportedError') {
+                try { var q = orig.call(el); if (q && q.catch) return q.catch(function () {}); } catch (e) {}
+              }
+            });
+          }
+          return p;
+        };
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason, msg = String(r && (r.message || r.name) || r || '');
+          if (/pointer ?lock/i.test(msg) || (r && r.name === 'WrongDocumentError')) { e.preventDefault(); e.stopImmediatePropagation(); }
+        });
+      })();
+
+      let canvas = document.querySelector("#unity-canvas");
+      let fullscreenContainer = document.querySelector("#unity-fullscreen-container");
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      // NIGHTMARE 온라인 방 서버 주소. 도메인에 서버(server/server.js)를 올린 뒤 여기에 적는다.
+      //   예: window.NIGHTMARE_SERVER = "wss://nightmare.내도메인.com";
+      // 비워 두면 내 컴퓨터(localhost)에서 열 때만 ws://localhost:8787 로 접속하고, 그 밖에서는 혼자 하기만 된다.
+      // 주소창에 ?server=wss://… 를 붙여 잠깐 다른 서버로 접속할 수도 있다.
+      window.NIGHTMARE_SERVER = "";
+
+      // 빌드마다 폴더 이름(BUILD)을 바꾼다. 캐시된 예전 페이지가 새 데이터를 섞어 읽어 크래시 나는 것을 막는다
+      var BUILD = "50";
+      var buildUrl = "../Build/" + BUILD;
+      var loaderUrl = buildUrl + "/WebGL.loader.js";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/WebGL.data",
+        frameworkUrl: buildUrl + "/WebGL.framework.js",
+        codeUrl: buildUrl + "/WebGL.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+
+        // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
+        // you can pass fullscreenElementID: "my-unity-fullscreen-container-id", in this configuration field to
+        // explicitly point to the element tree root that is displayed in fullscreen mode.
+        fullscreenElementID: "unity-fullscreen-container",
+
+        companyName: "gunny",
+        productName: "Pyegyo 3D",
+        productVersion: "0.1.0",
+        showBanner: unityShowBanner,
+        // errorHandler: function(err, url, line) {
+        //    alert("error " + err + " occurred at line " + line);
+        //    // Return 'true' if you handled this error and don't want Unity
+        //    // to process it further, 'false' otherwise.
+        //    return true;
+        // },
+      };
+
+      // By default, Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      // If you would like all file writes inside Unity Application.persistentDataPath
+      // directory to automatically persist so that the contents are remembered when
+      // the user revisits the site the next time, uncomment the following line:
+      // config.autoSyncPersistentDataPath = true;
+      // This autosyncing is currently not the default behavior to avoid regressing
+      // existing user projects that might rely on the earlier manual
+      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
+      // expected to change.
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        document.querySelector("#unity-container").className = "unity-mobile";
+        canvas.className = "unity-mobile";
+
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
+
+
+      } else {
+        // Desktop style: Render the game canvas container in a window that can be maximized to fullscreen:
+        fullscreenContainer.style.width = "1280px";
+        fullscreenContainer.style.height = "720px";
+      }
+
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        const loadingContainer = document.querySelector("#unity-loading-container");
+        const progressBarFull = document.querySelector("#unity-progress-bar-full");
+
+        createUnityInstance(canvas, config, (progress) => {
+          if (progress < 1) {
+            loadingContainer.style.display = "block";
+            progressBarFull.style.width = 100 * progress + "%";
+          } else {
+            loadingContainer.style.display = "none";
+          }
+        }).then((unityInstance) => {
+                window.unityInstance = unityInstance;
+                document.querySelector("#unity-fullscreen-button").onclick = () => {
+                  unityInstance.SetFullscreen(1);
+                };
+
+              }).catch((message) => {
+                alert(message);
+              });
+            };
+
+      // 이 페이지가 캐시된 옛 버전이면 최신 페이지로 다시 연다
+      fetch("../version.txt?t=" + Date.now(), { cache: "no-store" })
+        .then((r) => (r.ok ? r.text() : BUILD))
+        .catch(() => BUILD)
+        .then((v) => {
+          v = v.trim();
+          if (v && v !== BUILD && location.search.indexOf("r=" + v) < 0) {
+            location.replace(location.pathname + "?r=" + v + location.hash);
+            return;
+          }
+          document.body.appendChild(script);
+        });
+
+    </script>
+  </body>
+</html>
