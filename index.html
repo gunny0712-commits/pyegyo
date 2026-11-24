@@ -13,7 +13,7 @@
     // 예전 주소(…/pyegyo/#ch1 등)로 들어오면 게임 화면으로 바로 보낸다
     (function () {
       var h = location.hash;
-      if (/^#(ch[1-3]|nm2?solo|nm2?)$/.test(h)) location.replace('play/' + h);
+      if (/^#(ch[1-3]|nm2?solo|nm2?)$/.test(h)) location.replace('play/' + h);   // 폐교 3D 옛 주소
     })();
   </script>
   <style>
@@ -124,6 +124,12 @@
     .btn-main:hover { filter: brightness(1.08); }
     .btn-sub { background: var(--chip); color: var(--ink); }
     .btn-sub:hover { background: var(--line); }
+    .parts { display: flex; flex-wrap: wrap; gap: 4px 6px; font-size: 12.5px; align-items: center; }
+    .parts b { color: var(--sub); font-weight: 500; margin-right: 2px; }
+    .parts span { background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+    .soon { border: 2px dashed var(--line); box-shadow: none; background: transparent; }
+    .soon:hover { transform: none; box-shadow: none; }
+    .soon-art { aspect-ratio: 16 / 9; display: grid; place-items: center; font-size: 46px; color: var(--sub); background: var(--chip); }
     .empty { grid-column: 1 / -1; text-align: center; padding: 40px 0; color: var(--sub); background: var(--card); border-radius: 18px; }
 
     /* 오른쪽 */
@@ -193,7 +199,7 @@
     <div class="wrap cat-row" id="cats">
       <button class="cat on" data-cat="all">전체</button>
       <button class="cat" data-cat="new"><span class="dot" style="background:var(--brand-2)"></span>새로 나온</button>
-      <button class="cat" data-cat="story"><span class="dot" style="background:var(--brand)"></span>스토리 공포</button>
+      <button class="cat" data-cat="horror"><span class="dot" style="background:var(--brand)"></span>공포</button>
       <button class="cat" data-cat="multi"><span class="dot" style="background:var(--green)"></span>친구랑 같이 (온라인)</button>
       <button class="cat" data-cat="puzzle"><span class="dot" style="background:var(--accent)"></span>퍼즐·미니게임</button>
       <button class="cat" data-cat="chase"><span class="dot" style="background:#e0465f"></span>추격전</button>
@@ -215,8 +221,8 @@
       <aside>
         <div class="box welcome">
           <h5>👋 어서 와요!</h5>
-          <p>손전등 하나로 버려진 곳을 탐험하는 3D 공포 게임 모음이에요. 설치 없이 브라우저에서 바로 즐겨요.</p>
-          <a class="btn" href="play/" data-id="menu">게임 메뉴 열기</a>
+          <p>직접 만든 게임을 모아 둔 곳이에요. 설치 없이 브라우저에서 바로 즐겨요. 새 게임도 계속 늘어나요!</p>
+          <a class="btn" href="play/" data-id="pyegyo">폐교 3D 시작하기</a>
         </div>
 
         <div class="box">
@@ -235,7 +241,7 @@
         </div>
 
         <div class="box" id="keys">
-          <h5>⌨ 조작법</h5>
+          <h5>⌨ 조작법 <small style="font-family:Noto Sans KR;font-size:13px;color:var(--sub)">폐교 3D</small></h5>
           <table class="keys">
             <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>이동</td></tr>
             <tr><td>마우스</td><td>둘러보기</td></tr>
@@ -265,33 +271,22 @@
   </footer>
 
   <script>
-    // 게임 목록 (play/ 뒤의 #주소로 바로 들어간다)
+    // ───────── 게임 목록 ─────────
+    // 새 게임을 만들면 여기에 하나 더 넣으면 된다.
+    //  url: 게임이 있는 곳 (예: 'play/', 나중에 'games/새게임/')
+    //  cats: 분류 버튼 (new · horror · multi · puzzle · chase)
+    //  parts: 게임 안에서 고를 수 있는 챕터·모드 (카드에 작게 보여 주기만 한다)
     var GAMES = [
-      { id: 'nm2', series: 'NIGHTMARE · 챕터 2', title: '폐장된 놀이공원', img: 'assets/nm2.jpg', hash: '#nm2solo', multi: '#nm2',
-        desc: '연등 미로 끝에서 만난 야간 놀이공원. 탑승권을 끊고, 유령의 집을 지나, 멈추지 않는 인형탈에게서 도망쳐요.',
-        tags: ['혼자 · 최대 4명', '오픈월드', '미니게임 3종'], scary: 4, cats: ['new', 'multi', 'puzzle', 'chase'], badges: ['new', 'beta', 'multi'],
-        keywords: '나이트메어 놀이공원 회전목마 관람차 인형탈 곰 거인 광대 서커스 사격장 범퍼카 유령의집' },
-      { id: 'nm1', series: 'NIGHTMARE · 챕터 1', title: '연화예고', img: 'assets/nm1.jpg', hash: '#nmsolo', multi: '#nm',
-        desc: '안개 낀 교정, 탈이 걸린 복도, 부서진 각시탈. 친구와 네 글자 코드로 모여 함께 탈출해요.',
-        tags: ['혼자 · 최대 4명', '보스전', '야자 시간'], scary: 4, cats: ['story', 'multi', 'chase'], badges: ['multi'],
-        keywords: '나이트메어 연화예고 탈 각시탈 연등 미로 야자 교무주임 기록보관실' },
-      { id: 'ch1', series: '폐교 3D · 챕터 1', title: '폐교 — 남겨진 교실', img: 'assets/ch1.jpg', hash: '#ch1',
-        desc: '1998년에 문을 닫은 월하고등학교. 아직 끝나지 않은 숨바꼭질이 시작돼요.',
-        tags: ['혼자', '스토리', '진 엔딩'], scary: 3, cats: ['story', 'chase'], badges: [],
-        keywords: '폐교 학교 교실 소연 숨바꼭질 사물함 출석부' },
-      { id: 'ch2', series: '폐교 3D · 챕터 2', title: '체크아웃 — 숲속의 백운호텔', img: 'assets/ch2.jpg', hash: '#ch2',
-        desc: '새벽 신고를 받고 출동한 경찰이 화재로 버려진 호텔에 갇혀요. 금고, 지하 미로, 배전반 퍼즐.',
-        tags: ['혼자', '퍼즐', '추격전'], scary: 3, cats: ['story', 'puzzle', 'chase'], badges: [],
-        keywords: '호텔 백운 경찰 지배인 금고 지하 미로 배전반 비상계단' },
-      { id: 'ch3', series: '폐교 3D · 챕터 3', title: '봉인 — 숲속의 송씨 저택', img: 'assets/ch3.jpg', hash: '#ch3',
-        desc: '흉가 체험 방송 중 찢어진 부적 한 장. 대저택과 지하 굿방에서 부적 네 장을 모아요.',
-        tags: ['혼자', '퍼즐', '미니게임'], scary: 4, cats: ['story', 'puzzle'], badges: [],
-        keywords: '저택 부적 굿 괘종시계 사당 위패 피아노 방울' }
+      { id: 'pyegyo', series: '3D 공포 어드벤처', title: '폐교 3D — 남겨진 것들', img: 'assets/nm2boss.jpg', url: 'play/',
+        desc: '손전등 하나로 버려진 학교·호텔·저택·놀이공원을 탐험해요. 혼자 하는 스토리 챕터와 친구 셋까지 함께하는 NIGHTMARE 모드가 들어 있어요.',
+        tags: ['혼자 · 최대 4명', '챕터 5개', 'PC'], scary: 4, cats: ['new', 'horror', 'multi', 'puzzle', 'chase'], badges: ['new', 'multi'],
+        parts: ['폐교', '백운호텔', '송씨 저택', 'NIGHTMARE 연화예고', 'NIGHTMARE 놀이공원 (베타)'],
+        keywords: '폐교 학교 호텔 저택 부적 나이트메어 연화예고 탈 각시탈 놀이공원 회전목마 관람차 인형탈 거인 광대 서커스 협동 멀티' }
     ];
     var SLIDES = [
-      { img: 'assets/hero.jpg', badges: ['new', 'beta'], title: '거인 광대의<br>붉은 서커스 미로', text: 'NIGHTMARE 챕터 2 베타 공개! 벽 너머로 내려다보는 거인 광대를 피해 오르골을 완성하세요.', game: 'nm2' },
-      { img: 'assets/nm2.jpg', badges: ['multi'], title: '친구 셋을 불러<br>놀이공원 탈출', text: '방을 만들면 네 글자 코드가 나와요. 최대 4명이 함께 셔터를 들어 올리고 발전기를 고쳐요.', game: 'nm2', multi: true },
-      { img: 'assets/nm1.jpg', badges: [], title: '연등이 켜진<br>폐교, 연화예고', text: '부서진 각시탈과 교무주임이 기다리는 NIGHTMARE 챕터 1.', game: 'nm1' }
+      { img: 'assets/hero.jpg', badges: ['new', 'beta'], title: '거인 광대의<br>붉은 서커스 미로', text: '폐교 3D의 NIGHTMARE 챕터 2 베타 공개! 벽 너머로 내려다보는 거인 광대를 피해 오르골을 완성하세요.', game: 'pyegyo' },
+      { img: 'assets/nm2.jpg', badges: ['multi'], title: '친구 셋을 불러<br>함께 탈출', text: '게임 메뉴의 NIGHTMARE에서 방을 만들면 네 글자 코드가 나와요. 최대 4명이 함께해요.', game: 'pyegyo' },
+      { img: 'assets/ch1.jpg', badges: [], title: '1998년에 문을 닫은<br>월하고등학교', text: '아직 끝나지 않은 숨바꼭질. 폐교 3D 스토리 챕터를 처음부터 즐겨 보세요.', game: 'pyegyo' }
     ];
     var BADGE = { new: '<span class="badge b-new">NEW</span>', beta: '<span class="badge b-beta">베타</span>', multi: '<span class="badge b-multi">협동</span>' };
     var PLAY_ICO = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
@@ -302,7 +297,7 @@
     function loadRecent() { try { return JSON.parse(localStorage.getItem('playground.recent') || '[]'); } catch (e) { return []; } }
     function saveRecent(id) {
       try {
-        var r = loadRecent().filter(function (x) { return x.id !== id; });
+        var r = loadRecent().filter(function (x) { return x.id !== id && byId(x.id); });
         r.unshift({ id: id, t: Date.now() });
         localStorage.setItem('playground.recent', JSON.stringify(r.slice(0, 4)));
       } catch (e) {}
@@ -314,32 +309,30 @@
       return Math.round(h / 24) + '일 전';
     }
     function renderRecent() {
-      var r = loadRecent(), box = document.getElementById('recent');
-      var html = r.map(function (x) {
+      var html = loadRecent().map(function (x) {
         var g = byId(x.id); if (!g) return '';
-        return '<a href="play/' + g.hash + '" data-id="' + g.id + '"><img src="' + g.img + '" alt=""><span><b>' + esc(g.title) + '</b><small>' + esc(g.series) + ' · ' + ago(x.t) + '</small></span></a>';
+        return '<a href="' + g.url + '" data-id="' + g.id + '"><img src="' + g.img + '" alt=""><span><b>' + esc(g.title) + '</b><small>' + esc(g.series) + ' · ' + ago(x.t) + '</small></span></a>';
       }).join('');
-      if (html) box.innerHTML = html;
+      if (html) document.getElementById('recent').innerHTML = html;
     }
 
-    // 게임 카드
+    // 게임 카드 (+ 맨 끝에 '새 게임 준비 중' 자리)
     var cat = 'all';
     function renderGames() {
       var q = document.getElementById('q').value.trim().toLowerCase();
       var list = GAMES.filter(function (g) {
         if (cat !== 'all' && g.cats.indexOf(cat) < 0) return false;
         if (!q) return true;
-        return (g.title + ' ' + g.series + ' ' + g.desc + ' ' + g.keywords + ' ' + g.tags.join(' ')).toLowerCase().indexOf(q) >= 0;
+        return (g.title + ' ' + g.series + ' ' + g.desc + ' ' + g.keywords + ' ' + g.tags.join(' ') + ' ' + g.parts.join(' ')).toLowerCase().indexOf(q) >= 0;
       });
-      var titles = { all: '모든 게임', new: '새로 나온 게임', story: '스토리 공포', multi: '친구랑 같이 (온라인)', puzzle: '퍼즐·미니게임', chase: '추격전' };
+      var titles = { all: '모든 게임', new: '새로 나온 게임', horror: '공포', multi: '친구랑 같이 (온라인)', puzzle: '퍼즐·미니게임', chase: '추격전' };
       document.getElementById('list-title').textContent = q ? '‘' + q + '’ 찾은 결과' : titles[cat];
       document.getElementById('count').textContent = list.length + '개';
       var el = document.getElementById('games');
-      if (!list.length) { el.innerHTML = '<div class="empty">찾는 게임이 없어요. 다른 낱말로 찾아보세요.</div>'; return; }
-      el.innerHTML = list.map(function (g) {
+      var html = list.map(function (g) {
         var scary = '<span class="tag">무서움 <span class="scary">' + '●'.repeat(g.scary) + '</span>' + '○'.repeat(5 - g.scary) + '</span>';
         return '<article class="game">' +
-          '<a class="thumb" href="play/' + g.hash + '" data-id="' + g.id + '" aria-label="' + esc(g.title) + ' 하기">' +
+          '<a class="thumb" href="' + g.url + '" data-id="' + g.id + '" aria-label="' + esc(g.title) + ' 시작">' +
             '<img src="' + g.img + '" alt="' + esc(g.title) + ' 장면" loading="lazy">' +
             '<span class="badges">' + g.badges.map(function (b) { return BADGE[b]; }).join('') + '</span>' +
             '<span class="play-ico"><span>' + PLAY_ICO + '</span></span></a>' +
@@ -347,13 +340,13 @@
             '<div class="game-series">' + esc(g.series) + '</div>' +
             '<h4>' + esc(g.title) + '</h4>' +
             '<p>' + esc(g.desc) + '</p>' +
+            '<div class="parts"><b>들어 있는 이야기</b>' + g.parts.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('') + '</div>' +
             '<div class="tags">' + g.tags.map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + scary + '</div>' +
-            '<div class="game-actions">' +
-              '<a class="btn btn-main" href="play/' + g.hash + '" data-id="' + g.id + '">▶ ' + (g.multi ? '혼자 하기' : '바로 하기') + '</a>' +
-              (g.multi ? '<a class="btn btn-sub" href="play/' + g.multi + '" data-id="' + g.id + '">친구랑</a>' : '') +
-            '</div>' +
+            '<div class="game-actions"><a class="btn btn-main" href="' + g.url + '" data-id="' + g.id + '">▶ 게임 시작</a></div>' +
           '</div></article>';
       }).join('');
+      if (!q && cat === 'all') html += '<article class="game soon"><div class="soon-art">＋</div><div class="game-body"><div class="game-series">COMING SOON</div><h4>새 게임 준비 중</h4><p>다음 게임을 만들고 있어요. 완성되면 이 자리에 나타나요!</p></div></article>';
+      el.innerHTML = html || '<div class="empty">찾는 게임이 없어요. 다른 낱말로 찾아보세요.</div>';
     }
 
     // 큰 배너 (6초마다 넘어간다)
@@ -367,9 +360,7 @@
         d.innerHTML = '<img src="' + s.img + '" alt="">' +
           '<div class="slide-body">' + s.badges.map(function (b) { return BADGE[b]; }).join('') +
           '<h2>' + s.title + '</h2><p>' + esc(s.text) + '</p>' +
-          '<a class="btn btn-play" href="play/' + (s.multi ? g.multi : g.hash) + '" data-id="' + g.id + '">▶ ' + (s.multi ? '방 만들기' : '지금 하기') + '</a>' +
-          (!s.multi && g.multi ? '<a class="btn btn-ghost" href="play/' + g.multi + '" data-id="' + g.id + '">친구랑 하기</a>' : '') +
-          '</div>';
+          '<a class="btn btn-play" href="' + g.url + '" data-id="' + g.id + '">▶ 게임 시작</a></div>';
         hero.insertBefore(d, dots);
         var b = document.createElement('button');
         b.setAttribute('aria-label', (i + 1) + '번째 추천');
@@ -406,10 +397,9 @@
       renderGames();
     });
     document.getElementById('q').addEventListener('input', renderGames);
-    // 게임을 누르면 '최근에 한 게임'에 남긴다
     document.addEventListener('click', function (e) {
       var a = e.target.closest('a[data-id]');
-      if (a && a.getAttribute('data-id') !== 'menu') saveRecent(a.getAttribute('data-id'));
+      if (a && byId(a.getAttribute('data-id'))) saveRecent(a.getAttribute('data-id'));
     });
 
     renderHero(); restart(); renderGames(); renderRecent();
